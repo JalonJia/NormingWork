@@ -8,31 +8,37 @@ chrome_driver_path = dir + '\chromedriver.exe'
 
 # create a new Chrome session
 driver = webdriver.Chrome(chrome_driver_path)
-driver.implicitly_wait(30)
+driver.implicitly_wait(60)
 driver.maximize_window()
 
 # navigate to the application home page
-driver.get('http://www.baidu.com/')
+driver.get('http://192.168.41.130/Sage300/')
 
 # get the search textbox
-search_field = driver.find_element_by_name('wd')
-search_field.clear()
+search_field = driver.find_element_by_name('btnLogin')
+#search_field.clear()
+search_field.click()
+
+button_OK = driver.find_element_by_id('kendoConfirmationCancelButton')
+button_OK.click()
+
+
 
 # enter search keyword and submit
-search_field.send_keys('phones')
-search_field.submit()
+#search_field.send_keys('phones')
+#search_field.submit()
 
 # get all the anchor elements which have product names displayed
 # currently on result page using find_elements_by_xpath method
-products = driver.find_elements_by_xpath(r'''//*[@id="2"]''')
+#products = driver.find_elements_by_xpath(r'''//*[@id="2"]''')
 
 # get the number of anchor elements found
-print('Found ' + str(len(products)) + ' products:')
+#print('Found ' + str(len(products)) + ' products:')
 
 # iterate through each anchor element and
 # print the text that is name of the product
-for product in products:
-    print(product.text)
+#for product in products:
+#    print(product.text)
 
 # close the browser window
 driver.quit()
