@@ -93,16 +93,18 @@ class ReadExcel(object):
             for row in range(sheet.nrows):
                 if sheet.row_values(row)[0][:2] == 'EN' :
                     table_name = sheet.row_values(row)[0]
-                    res_str = 'IDS_%s_VIEW_NAME       ,        "%s"\nIDS_%s_VIEW_NOUN       ,        "%s"\n' % (table_name, sheet.row_values(row)[1], table_name, sheet.row_values(row)[1])
+                    res_str = 'IDS_%s_VIEW_NAME%s,        "%s"\nIDS_%s_VIEW_NOUN%s,        "%s"\n' % (table_name, ' ' * (15-len(table_name)), sheet.row_values(row)[1], table_name, ' ' * (15-len(table_name)), sheet.row_values(row)[1])
                     print(res_str)
-                    file.write(res_str)
-                    #print(table_name)
+                    if sheet.row_values(row)[1] != '' :
+                        file.write(f'#include "{table_name}.i"\n')
+                        file.write(res_str)
+                        #print(table_name)
                     continue
                 
                 if sheet.row_values(row)[1] != '' :
                     #print(sheet.row_values(row)[1])
                     #print(sheet.row_values(row)[5])
-                    res_str = 'IDS_%s_%s_FLD        ,        "%s"\n' % (table_name, sheet.row_values(row)[1], sheet.row_values(row)[5])
+                    res_str = 'IDS_%s_%s_FLD%s,        "%s"\n' % (table_name, sheet.row_values(row)[1], ' ' * (20-len(table_name)-len(sheet.row_values(row)[1])), sheet.row_values(row)[5])
                     print(res_str)
                     file.write(res_str)
                     
@@ -150,8 +152,8 @@ def read_excel():
 #Testing
 if (__name__ == '__main__') :
     #print(xlrd.XL_CELL_NUMBER)
-    x = ReadExcel(r'D:\Documents\RM65ADocs\PU0\Designment\EN65A_TablesChange.xlsx')
+    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\EN65APU2_TablesChange.xlsx')
     #x.read_excel()
-    x.read_excel_create_resource(r'D:\Documents\RM65ADocs\PU0\Designment\temp.txt')
+    x.read_excel_create_resource(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\temp.txt')
     
     

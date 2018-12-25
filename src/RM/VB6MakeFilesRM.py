@@ -1,38 +1,35 @@
-import os
-import os.path
-from os.path import join #这样引入之后，join就可以直接使用了
+import sys
 
+sys.path.append(r'd:\dev\NormingWork\src\Common')
+import VB6MakeFiles
 
-sPath = "D:\ACCPAC\EN65A"
-#print(os.listdir(sPath))
+'''
+TODO: 编译所有的RM VB界面
+'''
 
-#Test Funtions
-#print(os.path.split(sPath)) #将路径分解成两部分，第一部分从开始到最后一个路径分隔符，最后一个分隔符后面的路径\
-#sPath = 'D:\\ACCPAC\\AM65A\\am.ini'
-#print(os.path.dirname(sPath)) #路径的第一部分
-#print(os.path.basename(sPath)) #路径的第二部分
-#print(os.path.splitext(sPath))
+if __name__ == '__main__':
+    s_vb_home = 'C:\Program Files (x86)\Microsoft Visual Studio\VB98'
+    s_UICode_home = r'D:\Pluswdev2012\EN65A\VBSource'
+    #VB6MakeFiles.make_vb_projects(s_UICode_home, s_vb_home)
 
-s_vb_home = 'C:\Program Files (x86)\Microsoft Visual Studio\VB98'
-os.chdir(s_vb_home)
-
-print('----------------------------------------------------------')
-
-s_AMUI_home = 'D:\\Pluswdev2012\\EN65A\\VBSource\\'
-for root, dirs, files in os.walk(s_AMUI_home): #files会得到目录下的文件（不包括文件夹）；dirs会获取到每个文件夹下面的子目录；root会遍历每个子文件夹
-    print('Folder: ', root)
-    for file in files:
-        s_filename = os.path.splitext(file)[0] #文件名
-        s_filetype = os.path.splitext(file)[1] #文件后缀
-        #print(s_filetype)
-        if (s_filetype == '.vbp') and (s_filename[-3:] != 'EXE') and (len(s_filename) >= len('ACCPACEN0000')) :
-            s_filepath = os.path.join(root, file)
-            if os.path.exists(s_filepath):
-                print(s_filepath)
-                fp = os.popen('vb6.exe /make "%s"' % s_filepath) #路径用""引起来可以避免空格带来的问题
-                fpread = fp.read()
-                print(fpread)
-
+    s_failed = []
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Requisitions\CustomRequisitionType\AccpacEN9132')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Project\Maintenance\AccpacEN8007')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Timesheet\TimesheetEntry\AccpacEN2006')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Requisitions\PJCEstimateInquiry\AccpacEN9106')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Setup\ExpenseSetup\ExpenseOptions\AccpacEN1042')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Requisitions\APInvoiceRequistionEntry\AccpacEN9122')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Requisitions\CustomReportType\AccpacEN9151')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Project\Templates\AccpacEN8006')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Overtime\OvertimeBank')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Overtime\OvertimeCalculate')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Budget\Budget Request List')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Budget\Budget Maintenance')
+    # s_failed.append(r'D:\Pluswdev2012\EN65A\VBSource\Leave\LeaveAccount')
+    
+    for s in s_failed:
+        VB6MakeFiles.make_vb_projects(s, s_vb_home)
+    
 
 
 
