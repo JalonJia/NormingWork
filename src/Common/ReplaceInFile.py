@@ -36,6 +36,8 @@ def replace_re(s_text, s_from, s_to) :
         s_result = re.sub(pattern, s_to, s_text)
     #     s_result = s_result.replace(match_result.group(), s_to)
         print(f'将字符串{match_result.group()} 替换为：{s_result}')
+        for g in match_result.groups():
+            print(g)
     
     return s_result
 
@@ -43,4 +45,30 @@ def replace_re(s_text, s_from, s_to) :
 
 if __name__ == '__main__' :
     #upgrade_and_comple(s_AMView_home, s_AMUI_home, s_vb_home, sPath)
-    pass
+    #[.\n]不能表示所有字符
+    #使用(.|\s)来表示所有字符
+    #使用[\s\S]来表示所有字符
+    # s_mask_or_list = 'RateOperList\n1 - Multiply\n2 - Divide'
+    # s_from = r'(.*)List([\S\s]*)'
+    # s_to = r'\1List'
+    # s_mask_or_list = replace_re(s_mask_or_list, s_from, s_to) 
+    # print(s_mask_or_list)
+
+    # s_mask_or_list = 'RateOperList\n1 - Multiply\n2 - Divide'
+    # s_from = r'(.*)List((.|\s)*)'
+    # s_to = r'\1List'
+    # s_mask_or_list = replace_re(s_mask_or_list, s_from, s_to) 
+    # print(s_mask_or_list)
+
+    s_mask_or_list = '%-12N'
+    s_from = r'(.*)%[-](.*?)([\)]?)$'
+    s_to = r'Key\2Mask'
+    s_mask_or_list = replace_re(s_mask_or_list, s_from, s_to) 
+    print(s_mask_or_list)
+
+    #使用非贪婪模式匹配括号之前的字符
+    s_mask_or_list = '(%-12N)'
+    s_from = r'(.*)%[-](.*?)([\)]?)$'
+    s_to = r'Key\2Mask'
+    s_mask_or_list = replace_re(s_mask_or_list, s_from, s_to) 
+    print(s_mask_or_list)
