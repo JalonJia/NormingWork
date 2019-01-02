@@ -145,7 +145,8 @@ class ReadExcel(object):
                         
             #print Each Cell
             for row in range(sheet.nrows):
-                if sheet.row_values(row)[0][:2] == 'EN' :
+                s_appl = str(sheet.row_values(row)[0][:2])
+                if len(s_appl)>0 and (s_appl in 'EN|AM|NP|IS|BS|VS|VI|SS|PS|') :
                     if table.table_name > '':
                         last_table = copy.deepcopy(table)
                         tables.append(last_table)
@@ -266,10 +267,10 @@ def read_excel():
 #Testing
 if __name__ == '__main__' :
     #print(xlrd.XL_CELL_NUMBER)
-    x = ReadExcel(r'C:\Dev\git\NormingWork\Docs\EN65APU2_TablesChange.xlsx')
+    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\EN65APU2_TablesChange.xlsx')
     #x.read_excel()
     #x.read_excel_create_resource(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\temp.txt')
-    x.generate_table_changes(r'C:\Dev\git\NormingWork\Docs')
+    x.generate_table_changes(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp')
 
     # s_mask_or_list = '(%-12N)'
     # s_from = r'(.*)%[-](.*)[\)*]$'

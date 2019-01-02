@@ -115,24 +115,25 @@ class Table(object):
         '''
         得到表的字段描述
         '''
-        s_fields_desc = f'#include "{self.table_name}.i"\n'
-        #file.write(f'#include "{self.table_name}.i"\n')
-        
-        res_str = 'IDS_%s_VIEW_NAME%s,        "%s"\n' % (self.table_name, ' ' * (15-len(self.table_name)), self.table_desc)
-        print(res_str)
-        s_fields_desc += res_str
-        #file.write(res_str)
-        res_str = 'IDS_%s_VIEW_NOUN%s,        "%s"\n' % (self.table_name, ' ' * (15-len(self.table_name)), self.table_desc)
-        print(res_str)
-        s_fields_desc += res_str
-        #file.write(res_str)
+        s_fields_desc = ''
+        if self.table_desc > '':
+            s_fields_desc += f'\n#include "{self.table_name}.i"\n'            
+            res_str = 'IDS_%s_VIEW_NAME%s,        "%s"\n' % (self.table_name, ' ' * (15-len(self.table_name)), self.table_desc)
+            #print(res_str)
+            s_fields_desc += res_str
+            res_str = 'IDS_%s_VIEW_NOUN%s,        "%s"\n' % (self.table_name, ' ' * (15-len(self.table_name)), self.table_desc)
+            #print(res_str)
+            s_fields_desc += res_str
+            res_str = 'IDS_%s_KEY_NAME%s,        "%s"\n' % (self.table_name, ' ' * (16-len(self.table_name)), self.table_desc)
+            #print(res_str)
+            s_fields_desc += res_str
 
         for field in self.fields:            
             res_str = 'IDS_%s_%s_FLD%s,        "%s"\n' % (self.table_name, field.field_name, ' ' * (20-len(self.table_name)-len(field.field_name)), field.desc)
-            print(res_str)
+            #print(res_str)
             s_fields_desc += res_str
-            #file.write(res_str)
 
+        print(s_fields_desc)
         return s_fields_desc
 
 
