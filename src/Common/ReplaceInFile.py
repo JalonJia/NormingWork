@@ -3,6 +3,27 @@ import re
 import os.path
 from os.path import join
 
+def replace_infolder(s_folder_path, s_from_list, s_to_list, file_type_list, file_encoding='UTF-8') :
+    """
+    TODO: 将目录下面指定文件类型的文件中符合s_from_list正则表达式的内容，替换成s_to_list中对应的内容
+    file_type_list可以指定文件类型列表，如果为空，则检索所有文件。举例：['.ctl', '.frm', '.vbp']
+    """
+    print('----------------------upgrade folder------------------------------------')
+
+    for root, dirs, files in os.walk(s_folder_path): #files会得到目录下的文件（不包括文件夹）；dirs会获取到每个文件夹下面的子目录；root会遍历每个子文件夹
+        # print('Current Folder: ', root)
+        for file in files:
+            s_filename = os.path.splitext(file)[0] #文件名
+            s_filetype = os.path.splitext(file)[1] #文件后缀
+            
+            s_filepath = os.path.join(root, file)
+            if not (os.path.exists(s_filepath)):
+                continue
+
+            if (len(file_type_list) == 0) or (s_filetype in file_type_list):
+                #print(f'Current File: {s_filepath}')
+                replace_infile(s_filepath, s_from_list, s_to_list, file_encoding)
+                
 
 def replace_infile(s_file_path, s_from_list, s_to_list, file_encoding='UTF-8') :
     '''
@@ -36,8 +57,8 @@ def replace_re(s_text, s_from, s_to) :
         s_result = re.sub(pattern, s_to, s_text)
     #     s_result = s_result.replace(match_result.group(), s_to)
         print(f'将字符串{match_result.group()} 替换为：{s_result}')
-        for g in match_result.groups():
-            print(g)
+        # for g in match_result.groups():
+        #     print(g)
     
     return s_result
 
