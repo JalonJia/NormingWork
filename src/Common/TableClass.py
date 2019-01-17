@@ -59,6 +59,54 @@ class Field(object):
 
         return str
 
+    def get_define_code(self, s_table_name):
+        '''
+        生成字段C++的定义
+        '''
+        field_type = ''
+        field_size = ''
+        if self.type.lower() == 'string':
+            field_type = 'CHAR'
+            field_size = '[%s_SIZ(%s) + 1]' % (s_table_name, self.field_name.upper())
+        elif self.type.lower() == 'number':
+            field_type = 'DBSNUMBER'
+            field_size = '[%s_SIZ(%s)]' % (s_table_name, self.field_name.upper())
+        elif self.type.lower() == 'date':
+            field_type = 'DBSDATE'
+        elif self.type.lower() == 'time':
+            field_type = 'DBSTIME'
+        elif self.type.lower() == 'integer':
+            field_type = 'DBSINT'
+        elif self.type.lower() == 'long':
+            field_type = 'DBSLONG'
+
+        define_code = '    %s %s%s%s;' % (field_type, self.type.lower()[0], self.field_name.upper(), field_size)
+
+        return define_code 
+
+    def get_init_code(self, s_table_name):
+        '''
+        生成字段C++的定义
+        '''
+        field_varname = self.type.lower()[0] + self.field_name.upper()
+        field_init = ''
+        if self.type.lower() == 'string':
+            field_init = 'strCopy(%s, "")' % (field_varname)
+        elif self.type.lower() == 'number':
+            field_init = 'bcdInit(%s, %s_SIZ(%s))' % (field_varname, s_table_name, self.field_name.upper())
+        elif self.type.lower() == 'date':
+            field_init = 'dateInit(%s)' % (field_varname)
+        elif self.type.lower() == 'time':
+            field_init = 'dtBCDTimeInit(%s)' % (field_varname)
+        elif self.type.lower() == 'integer':
+            field_init = '%s = 0' % (field_varname)
+        elif self.type.lower() == 'long':
+            field_init = '%s = 0' % (field_varname)
+
+        init_code = '        %s;' % (field_init)
+
+        return init_code 
+
 
 class Table(object):
     '''
@@ -111,6 +159,39 @@ class Table(object):
         return s_tbl
 
 
+    def get_table_patten(self):
+        '''
+        得到表结构的ptn内容
+        '''
+        if len(self.table_desc) == 0:
+            return ''
+
+        s_ptn =  'CPPVIEW                     ; pattern type (C++ template)\n'
+        s_ptn += 'AAAA=%-23s; application id - symbolic constants\n' % self.table_name[:2]
+        s_ptn += 'aaaa=%-23s; application id - filenames\n' % self.table_name[:2].lower()
+        s_ptn += 'ZZZZ=%-23s; view name - symbolic constants and module name\n' % self.table_name
+        s_ptn += 'zzzz=%-23s; view name - filenames\n' % self.table_name.lower()
+        s_ptn += 'xxxx=%-23s; view name - view routine prefix\n' % self.table_name.lower()
+        s_ptn += "dddd='Copyright (c) 2019, Norming Software International Ltd.'\n"
+        s_ptn += '                            ; copyright notice or view description\n'
+        s_ptn += 'tttt=%-23s; table name\n' % self.table_name
+        tbl_chars = list(self.table_name)
+        s_ptn += "pppp={"
+        i = 0
+        for c in tbl_chars:
+            if i > 0:
+                s_ptn += ","
+            s_ptn += f"'{c}'"
+            i += 1
+        
+        for i in range(i, 8):
+            s_ptn += f",' '"
+        s_ptn += "}\n"
+        s_ptn += '                            ; table name - padded to eight characters\n'
+
+        return s_ptn
+
+
     def get_fileds_desc(self):
         '''
         得到表的字段描述
@@ -136,6 +217,24 @@ class Table(object):
         print(s_fields_desc)
         return s_fields_desc
 
+    def get_table_class_code(self):
+        '''
+        得到表结构的c++ class文件
+        '''
+        s_code = 'class %sValues{\npublic:\n' % self.table_name.upper()
+        s_init_code = '    %sValues()\n    {\n' % self.table_name.upper()
+        for field in self.fields:                
+            s_code += field.get_define_code(self.table_name.upper())
+            s_code += '\n'
+            s_init_code += field.get_init_code(self.table_name.upper())
+            s_init_code += '\n'
+
+        s_code += '\n'
+        s_code += s_init_code
+        s_code += '    }\n};\n'
+
+        return s_code
+
 
     def generate_tbl_file(self, s_file_path):
         '''
@@ -148,4 +247,26 @@ class Table(object):
         with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
             f_w.write(s_tbl)
 
+
+    def generate_ptn_file(self, s_file_path):
+        '''
+        生成ptn文件
+        '''
+        s_ptn = self.get_table_patten()
+        if len(s_ptn) == 0:
+            return 
+        
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(s_ptn)
+    
+    def generate_class_code(self, s_file_path):
+        '''
+        生成c++ class代码文件
+        '''
+        s_code = self.get_table_class_code()
+        if len(s_code) == 0:
+            return 
+        
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(s_code)
     

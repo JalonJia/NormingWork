@@ -227,6 +227,9 @@ class ReadExcel(object):
         for table in tables:
             s_file = os.path.join(file_path, f'{table.table_name}.tbl')
             table.generate_tbl_file(s_file)
+            s_file = os.path.join(file_path, f'{table.table_name}.ptn')
+            table.generate_ptn_file(s_file)
+            
         
 
 
