@@ -171,10 +171,12 @@ class ReadExcel(object):
 
                     if sheet.row_values(row)[2].strip() > '':
                         field.type = sheet.row_values(row)[2].strip().lower()
-                        if not (field.type in 'bcd|long|string|integer|int|date|time|'): #不是合法的行
+                        if not (field.type in 'bcd|long|string|integer|int|date|time|boolean|'): #不是合法的行
                             continue
                         if field.type == 'bcd':
                             field.type = 'number' 
+                        if field.type == 'boolean':
+                            field.type = 'integer' 
                     else: #不是合法的行
                         continue
                     

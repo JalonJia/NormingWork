@@ -68,7 +68,11 @@ class ReadTblFile(object):
 
 #Testing
 if __name__ == '__main__' :
-    x = ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENMAILS\ENMAILS.tbl')
-    x.generate_table_code(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp')
+    gen_list = []
+    gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENMAILS\ENMAILS.tbl'))
+    gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENPHTYR\ENPHTYR.tbl'))
+    for x in gen_list:
+        x.generate_table_code(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp')
+
 
 

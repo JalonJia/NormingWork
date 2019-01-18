@@ -108,6 +108,34 @@ class Field(object):
         return init_code 
 
 
+    def get_getvalue_code(self, s_table_name):
+        '''
+        生成字段C++的如下代码：vView.Get(FIELD_IDX, &field_value);
+        '''
+        upper_field = self.field_name.upper()
+        field_varname = self.type.lower()[0] + upper_field
+        field_idx = '%s_IDX(%s)' % (s_table_name, upper_field)
+        addr_flag = '' #&符号
+        if self.type.lower() == 'integer' or self.type.lower() == 'long':
+            addr_flag = '&'
+
+        get_str = 'Get'
+        if self.type.lower() == 'string':
+            get_str = 'GetString'
+
+        field_code = '        m_v%s.%s(%s, %sm_%sValues.%s);' % (s_table_name, get_str, field_idx, addr_flag, s_table_name, field_varname)
+        return field_code 
+
+    def get_putvalue_code(self, s_table_name):
+        '''
+        生成字段C++的如下代码：vView.Put(FIELD_IDX, field_value);
+        '''
+        upper_field = self.field_name.upper()
+        field_varname = self.type.lower()[0] + upper_field
+        field_idx = '%s_IDX(%s)' % (s_table_name, upper_field)
+        field_code = '        m_v%s.Put(%s, m_%sValues.%s);' % (s_table_name, field_idx, s_table_name, field_varname)
+        return field_code 
+
 class Table(object):
     '''
     定义Table的数据结构
@@ -223,15 +251,25 @@ class Table(object):
         '''
         s_code = 'class %sValues{\npublic:\n' % self.table_name.upper()
         s_init_code = '    %sValues()\n    {\n' % self.table_name.upper()
+        s_getvalue_code = '    Get%sValuesFromView(NormingView& m_v%s, %sValues& m_%sValues)\n    {\n' % (
+            self.table_name.upper(), self.table_name.upper(), self.table_name.upper(), self.table_name.upper())
+        s_putvalue_code = '    Put%sValuesToView(NormingView& m_v%s, %sValues&  m_%sValues)\n    {\n' % (
+            self.table_name.upper(), self.table_name.upper(), self.table_name.upper(), self.table_name.upper())
+
         for field in self.fields:                
             s_code += field.get_define_code(self.table_name.upper())
             s_code += '\n'
             s_init_code += field.get_init_code(self.table_name.upper())
             s_init_code += '\n'
+            s_getvalue_code += field.get_getvalue_code(self.table_name.upper())
+            s_getvalue_code += '\n'
+            s_putvalue_code += field.get_putvalue_code(self.table_name.upper())
+            s_putvalue_code += '\n'
 
-        s_code += '\n'
-        s_code += s_init_code
-        s_code += '    }\n};\n'
+        s_init_code += '    }\n\n'
+        s_getvalue_code += '    }\n\n'
+        s_putvalue_code += '    }\n\n'
+        s_code = s_code + '\n' + s_init_code + s_getvalue_code + s_putvalue_code + '};\n'
 
         return s_code
 
