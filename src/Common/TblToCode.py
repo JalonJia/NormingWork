@@ -33,9 +33,9 @@ class ReadTblFile(object):
             s_file_lines = f.readlines()
             for s_line in s_file_lines:
                 field_info = s_line.split()
-                if field_info[0][0] in '#!':
-                    continue
                 if len(field_info) < 7:
+                    continue
+                if field_info[0][0] in '#!/':
                     continue
 
                 field_name = field_info[3]
@@ -69,8 +69,9 @@ class ReadTblFile(object):
 #Testing
 if __name__ == '__main__' :
     gen_list = []
-    gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENMAILS\ENMAILS.tbl'))
-    gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENPHTYR\ENPHTYR.tbl'))
+    gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENRCPH\ENRCPH.tbl'))
+    gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENRCPL\ENRCPL.tbl'))
+    gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENRCPLC\ENRCPLC.tbl'))
     for x in gen_list:
         x.generate_table_code(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp')
 
