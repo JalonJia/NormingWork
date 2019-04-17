@@ -12,6 +12,7 @@ class FieldType(Enum):
     t_number = 4
     t_date = 5
     t_time = 6
+    t_boolean = 7
 
 
 class Field(object):
@@ -79,6 +80,8 @@ class Field(object):
             field_type = 'DBSINT'
         elif self.type.lower() == 'long':
             field_type = 'DBSLONG'
+        elif self.type.lower() == 'boolean':
+            field_type = 'DBSBOOL'
 
         define_code = '    %s %s%s%s;' % (field_type, self.type.lower()[0], self.field_name.upper(), field_size)
 
@@ -102,6 +105,8 @@ class Field(object):
             field_init = '%s = 0' % (field_varname)
         elif self.type.lower() == 'long':
             field_init = '%s = 0' % (field_varname)
+        elif self.type.lower() == 'boolean':
+            field_init = '%s = FALSE' % (field_varname)
 
         init_code = '        %s;' % (field_init)
 
@@ -116,7 +121,7 @@ class Field(object):
         field_varname = self.type.lower()[0] + upper_field
         field_idx = '%s_IDX(%s)' % (s_table_name, upper_field)
         addr_flag = '' #&符号
-        if self.type.lower() == 'integer' or self.type.lower() == 'long':
+        if self.type.lower() == 'integer' or self.type.lower() == 'long' or self.type.lower() == 'boolean':
             addr_flag = '&'
 
         get_str = 'Get'

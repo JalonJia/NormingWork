@@ -55,10 +55,10 @@ def generate_sln_file(s_file_path, s_module, file_encoding='UTF-8') :
 
 
 if __name__ == '__main__':
-    generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\AQ66A\ViewSource', 'AQ')
-    generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\BS66A\ViewSource', 'BS')
+    # generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\AQ66A\ViewSource', 'AQ')
+    # generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\BS66A\ViewSource', 'BS')
     generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\SS66A\ViewSource', 'SS')
-    generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\VS66A\ViewSource', 'VS')
-    generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\IS66A\ViewSource', 'IS')
-    generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\PS66A\ViewSource', 'PS')
+    # generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\VS66A\ViewSource', 'VS')
+    # generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\IS66A\ViewSource', 'IS')
+    # generate_sln_file(r'D:\Pluswdev2012\Security\Sec2019\PS66A\ViewSource', 'PS')
 

@@ -14,6 +14,9 @@ import ReplaceInFile
 #os.makedirs(path) #创建多级目录
 
 def make_vb_projects(s_VBScource_folder, s_vb_home = r'C:\Program Files (x86)\Microsoft Visual Studio\VB98') :
+    '''
+    编译目录下所有的vb项目
+    '''
     os.chdir(s_vb_home)
 
     print('-------------------开始编译VB项目---------------------------------------')

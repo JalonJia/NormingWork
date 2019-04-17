@@ -10,7 +10,7 @@ import VB6MakeFiles
 
 
 
-def upgrade_vb_projects(s_VBCode_path, s_compile_to, s_module, s_version, b_comp_with_Sage60 = False) :
+def upgrade_vb_projects(s_VBCode_path, s_compile_to, s_module, s_version, b_comp_with_Sage60 = False, s_compatible_mode = '0') :
     '''
     s_module: 模块名，例如AQ，BS等
     s_version: 要升级到的版本, 例如66A
@@ -22,9 +22,12 @@ def upgrade_vb_projects(s_VBCode_path, s_compile_to, s_module, s_version, b_comp
     s_to_list_bas = [f'    "{s_version}"']
 
     #replace from *.vbp
-    s_from_list = [r'MinorVer=.?', r'(.*)\\\d\d[A~Z]\\(.*)', r'(.*)%s\d\dA(.*)' % (s_module),  r'CompatibleMode=".?"', r'Path32="(.*)"', r'(.*)#2\.1#0; MSCOMCTL.OCX']
-    s_to_list = ['MinorVer=%s' % (s_version[1:2]), r'\1\\%s\\\2' % (s_version), r'\1%s%s\2' % (s_module, s_version), 'CompatibleMode="0"', f'Path32="{s_compile_to}{s_module}{s_version}"', r'\1#2.0#0; MSCOMCTL.OCX']
-    s_to_list_eng = ['MinorVer=%s' % (s_version[1:2]), r'\1\\%s\\\2' % (s_version), r'\1%s%s\2' % (s_module, s_version),  'CompatibleMode="0"', f'Path32="{s_compile_to}{s_module}{s_version}\\\\ENG"', r'\1#2.0#0; MSCOMCTL.OCX']
+    s_from_list = [r'MinorVer=.?', r'(.*)\\\d\d[A~Z]\\(.*)', r'(.*)%s\d\dA(.*)' % (s_module),  r'CompatibleMode=".?"',
+         r'Path32="(.*)', r'(.*)#2\.1#0; MSCOMCTL.OCX', r'(.*)#2\.1#0; mscomctl.ocx', r'(.*)#2\.1#0; mscomctl.OCX']
+    s_to_list = ['MinorVer=%s' % (s_version[1:2]), r'\1\\%s\\\2' % (s_version), r'\1%s%s\2' % (s_module, s_version), f'CompatibleMode="{s_compatible_mode}"', 
+        f'Path32="{s_compile_to}{s_module}{s_version}"', r'\1#2.0#0; MSCOMCTL.OCX', r'\1#2.0#0; MSCOMCTL.OCX', r'\1#2.0#0; MSCOMCTL.OCX']
+    s_to_list_eng = ['MinorVer=%s' % (s_version[1:2]), r'\1\\%s\\\2' % (s_version), r'\1%s%s\2' % (s_module, s_version),  f'CompatibleMode="{s_compatible_mode}"', 
+        f'Path32="{s_compile_to}{s_module}{s_version}\\\\ENG"', r'\1#2.0#0; MSCOMCTL.OCX', r'\1#2.0#0; MSCOMCTL.OCX', r'\1#2.0#0; MSCOMCTL.OCX']
 
     if b_comp_with_Sage60:
         s_from_list.append(r'(.*)#\d\.\d#0; a4wPeriodPicker.ocx')
@@ -60,11 +63,14 @@ def upgrade_vb_projects(s_VBCode_path, s_compile_to, s_module, s_version, b_comp
 
 
 
-def upgrade_view_projects(s_viewCode_path, s_module, s_version) :
+def upgrade_view_projects(s_viewCode_path, s_module, s_version, s_from_ver = '\d\d') :
+    '''
+    修改View的项目文件，如果指定s_from_ver, 则需要指定为版本的数字部分，如'65'
+    '''
     print('----------------------upgrade view projects------------------------------------')
 
     #replace from *.vcproj;*.vcxproj
-    s_from_list = [r'(.*)%s\d\d[A~Z](.*)' % (s_module)]
+    s_from_list = [r'(.*)%s%s[A~Z](.*)' % (s_module, s_from_ver)]
     s_to_list = [r'\1%s%s\2' % (s_module, s_version)]
      
     for root, dirs, files in os.walk(s_viewCode_path): #files会得到目录下的文件（不包括文件夹）；dirs会获取到每个文件夹下面的子目录；root会遍历每个子文件夹
@@ -77,8 +83,12 @@ def upgrade_view_projects(s_viewCode_path, s_module, s_version) :
             if not (os.path.exists(s_filepath)):
                 continue
 
-            if (s_filetype == '.vcproj') or (s_filetype == '.vcxproj') :
+            if (s_filetype == '.vcproj'):
                 #print(f'Current File: {s_filepath}')
+                ReplaceInFile.replace_infile(s_filepath, s_from_list, s_to_list)
+            elif s_filetype == '.vcxproj': #需要替换3次
+                ReplaceInFile.replace_infile(s_filepath, s_from_list, s_to_list)
+                ReplaceInFile.replace_infile(s_filepath, s_from_list, s_to_list)
                 ReplaceInFile.replace_infile(s_filepath, s_from_list, s_to_list)
             
 def upgrade_view_projects_from2005_security(s_viewCode_path, s_module, s_version) :
@@ -137,4 +147,5 @@ if __name__ == '__main__' :
     s_vb_home = r'C:\Program Files (x86)\Microsoft Visual Studio\VB98'
     s_UI_home = r'D:\Pluswdev2012\Security\Sec2019'
     s_View_home = r'D:\Pluswdev2012\Security\Sec2019'
-
+    
+    

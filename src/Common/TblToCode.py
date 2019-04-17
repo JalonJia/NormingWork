@@ -72,6 +72,8 @@ if __name__ == '__main__' :
     gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENRCPH\ENRCPH.tbl'))
     gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENRCPL\ENRCPL.tbl'))
     gen_list.append(ReadTblFile(r'D:\Pluswdev2012\EN65A\Source\Cprogram\ENRCPLC\ENRCPLC.tbl'))
+    gen_list.append(ReadTblFile(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp\PORCPH.tbl'))
+    gen_list.append(ReadTblFile(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp\PORCPL.tbl'))
     for x in gen_list:
         x.generate_table_code(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp')
 
