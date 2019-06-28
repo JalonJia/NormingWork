@@ -146,14 +146,16 @@ class ReadExcel(object):
             #print Each Cell
             for row in range(sheet.nrows):
                 s_appl = str(sheet.row_values(row)[0][:2])
+                b_created = (str(sheet.row_values(row)[11][:1]) == 'Y') #L列如果是Y表示已经创建过了
                 if len(s_appl)>0 and (s_appl in 'EN|AM|NP|IS|BS|VS|VI|SS|PS|') :
-                    if table.table_name > '':
+                    if table.table_name > '' and (not table.b_created):
                         last_table = copy.deepcopy(table)
                         tables.append(last_table)
 
                     table.table_name = sheet.row_values(row)[0].strip().upper()
                     table.table_desc = sheet.row_values(row)[1].strip()
                     table.fields = []
+                    table.b_created = b_created
                     continue
                 
                 if sheet.row_values(row)[1] != '' :
@@ -169,9 +171,9 @@ class ReadExcel(object):
                     else: #不是合法的行
                         continue
 
-                    if sheet.row_values(row)[2].strip() > '':
-                        field.type = sheet.row_values(row)[2].strip().lower()
-                        if not (field.type in 'bcd|long|string|integer|int|date|time|boolean|'): #不是合法的行
+                    if str(sheet.row_values(row)[2]).strip() > '':
+                        field.type = str(sheet.row_values(row)[2]).strip().lower()
+                        if not (field.type in 'bcd|number|long|string|integer|int|date|time|boolean|'): #不是合法的行
                             continue
                         if field.type == 'bcd':
                             field.type = 'number' 
@@ -183,14 +185,14 @@ class ReadExcel(object):
                     if str(sheet.row_values(row)[3]).strip() > '':
                         field.length = int(str(sheet.row_values(row)[3]).strip().split('.')[0])
                     
-                    if sheet.row_values(row)[4].strip() > '':
-                        field.decimal = int(sheet.row_values(row)[4].strip())
+                    if str(sheet.row_values(row)[4]).strip() > '':
+                        field.decimal = int(str(sheet.row_values(row)[4]).strip().split('.')[0])
 
-                    if sheet.row_values(row)[5].strip() > '':
-                        field.desc = sheet.row_values(row)[5].strip()
+                    if str(sheet.row_values(row)[5]).strip() > '':
+                        field.desc = str(sheet.row_values(row)[5]).strip()
 
-                    if sheet.row_values(row)[6].strip() > '':
-                        s_mask_or_list = sheet.row_values(row)[6].strip()
+                    if str(sheet.row_values(row)[6]).strip() > '':
+                        s_mask_or_list = str(sheet.row_values(row)[6]).strip()
                         s_from = r'(.*)%[-](.*?)([\)]?)$' #为了匹配(%-12N),对最后一个括号之前的字符使用非贪婪模式
                         s_to = r'Key\2Mask'
                         s_mask_or_list = ReplaceInFile.replace_re(s_mask_or_list, s_from, s_to)
@@ -231,6 +233,8 @@ class ReadExcel(object):
             table.generate_tbl_file(s_file)
             s_file = os.path.join(file_path, f'{table.table_name}.ptn')
             table.generate_ptn_file(s_file)
+            s_file = os.path.join(file_path, f'{table.table_name}.cpp')
+            table.generate_class_code(s_file)
             
         
 
@@ -272,10 +276,10 @@ def read_excel():
 #Testing
 if __name__ == '__main__' :
     #print(xlrd.XL_CELL_NUMBER)
-    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\EN65APU2_TablesChange.xlsx')
+    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU0\Design\TableGen.xlsx')
     #x.read_excel()
     #x.read_excel_create_resource(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\temp.txt')
-    x.generate_table_changes(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\Temp')
+    x.generate_table_changes(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU0\Temp')
 
     # s_mask_or_list = '(%-12N)'
     # s_from = r'(.*)%[-](.*)[\)*]$'

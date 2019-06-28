@@ -146,7 +146,7 @@ class Table(object):
     定义Table的数据结构
     '''
 
-    def __init__(self, s_table_name, s_table_desc='', s_key_desc=''):
+    def __init__(self, s_table_name, s_table_desc='', s_key_desc='', b_created = False):
         '''
         Constructor
         '''
@@ -154,6 +154,7 @@ class Table(object):
         self.table_desc = s_table_desc
         self.key_desc = s_key_desc
         self.fields = []
+        self.b_created = b_created
 
 
     def add_field(self, field):
