@@ -276,10 +276,10 @@ def read_excel():
 #Testing
 if __name__ == '__main__' :
     #print(xlrd.XL_CELL_NUMBER)
-    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU0\Design\TableGen.xlsx')
+    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU1\Design\EN66APU1_TablesChange.xlsx')
     #x.read_excel()
     #x.read_excel_create_resource(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\temp.txt')
-    x.generate_table_changes(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU0\Temp')
+    x.generate_table_changes(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU1\Temp')
 
     # s_mask_or_list = '(%-12N)'
     # s_from = r'(.*)%[-](.*)[\)*]$'

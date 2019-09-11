@@ -28,6 +28,7 @@ def replace_infolder(s_folder_path, s_from_list, s_to_list, file_type_list, file
 def replace_infile(s_file_path, s_from_list, s_to_list, file_encoding='UTF-8') :
     '''
         TODO：打开指定文件，并替换文件内容
+        先尝试普通替换，然后再执行正则替换
     '''
     #print(f'Replace in file: {s_file_path}, repalce from "{s_from_list} to "{s_to_list}"')
 
@@ -43,6 +44,7 @@ def replace_infile(s_file_path, s_from_list, s_to_list, file_encoding='UTF-8') :
         for s_line in s_file_lines:
             i = 0
             for sfrom in s_from_list:
+                s_line = s_line.replace(sfrom, s_to_list[i]) 
                 s_line = replace_re(s_line, sfrom, s_to_list[i])
                 i += 1
 
@@ -61,6 +63,28 @@ def replace_re(s_text, s_from, s_to) :
         #     print(g)
     
     return s_result
+
+def copy_file(src_file, dst_file):
+    """此函数的功以实现复制文件
+    src_file : 源文件名
+    dst_file : 目标文件名
+    """
+    print("Copy File:", src_file, "->" , dst_file)
+    try:
+        with open(src_file, "rb") as fr,open(dst_file, 'wb') as fw:  # fr读文件
+            while True:
+                data = fr.read(4096)
+                if not data:
+                    break
+                fw.write(data)
+    except OSError:
+        print("打开源文件失败")
+        return False
+    except:
+        print("未知错误，复制失败...")
+        return False
+    return True
+
 
 
 
