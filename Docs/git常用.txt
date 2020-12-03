@@ -1,0 +1,8 @@
+git 仓库迁移的两种方法
+https://blog.csdn.net/hpu11/article/details/70597600
+
+以下命令可以把一个代码库完整克隆到另一个，包含日志，分支等等：
+git clone --bare https://192.168.1.9:8443/summary/EN66A.git
+git push --mirror https://192.168.1.9:8443/summary/EN67A.git
+
+克隆完成之后，删除临时文件：rm -rf EN66A.git
