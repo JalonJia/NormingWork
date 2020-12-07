@@ -11,16 +11,6 @@ TODO: 使用Resource Hacker将RES文件中的字符串提取出来生成rc文件
 '''
 
 
-
-#Test Funtions
-#sPath = "D:\Pluswdev\AM65A\UISource"
-#print(os.listdir(sPath))
-#print(os.path.split(sPath)) #将路径分解成两部分，第一部分从开始到最后一个路径分隔符，最后一个分隔符后面的路径\
-#sPath = 'D:\\ACCPAC\\AM65A\\am.ini'
-#print(os.path.dirname(sPath)) #路径的第一部分
-#print(os.path.basename(sPath)) #路径的第二部分
-#print(os.path.splitext(sPath))
-
 #os.chdir(s_runner_home)
 
 class ResourceString:
@@ -121,7 +111,7 @@ class ResourceCompare:
                 #print(s_filetype)
                 if (s_filetype == '.rc'):
                     one_file_res = {}
-                    s_filepath = os.path.join(root, file)
+                    s_filepath = os.path.join(root, file)                    
                     with open(s_filepath, 'r', encoding='UTF-16 LE', errors='ignore' ) as f:
                     #print(f.read())            
                         s_file_lines = f.readlines()
@@ -129,6 +119,16 @@ class ResourceCompare:
                         for s_line in s_file_lines:
                             if one_res.string_to_resource(s_line):
                                 one_file_res[one_res.res_id] = one_res.res_string
+
+                    #对ENG.rc特殊处理
+                    if len(one_file_res) == 0:
+                        with open(s_filepath, 'r', encoding='UTF-8', errors='ignore' ) as f:
+                        #print(f.read())            
+                            s_file_lines = f.readlines()
+                            one_res = ResourceString()
+                            for s_line in s_file_lines:
+                                if one_res.string_to_resource(s_line):
+                                    one_file_res[one_res.res_id] = one_res.res_string
 
                     res_dict[s_filename] = one_file_res
                     
@@ -189,7 +189,8 @@ class ResourceCompare:
                         if not b_write_file:
                             row_num += 2
                             my_sheet.write(row_num, col_res_file, file_name)
-                            my_sheet.write(row_num, col_res_string, self.res_2[file_name]['101'])
+                            if '101' in self.res_2[file_name].keys():
+                                my_sheet.write(row_num, col_res_string, self.res_2[file_name]['101'])                            
                             row_num += 1
                             b_write_file = True
 
@@ -221,13 +222,14 @@ class ResourceCompare:
 #Testing
 if __name__ == '__main__' :
     s_runner_home = r'D:\Dev\ResourceHacker'
-    res_folder_1 = r'C:\Sage300\EN65A\ENG'
-    res_folder_2 = r'C:\Sage300\EN66A\ENG'
-    res_folder_save_1 = r'C:\Working\WeeklyWorking\ThisWeek\EN65ARC'
-    res_folder_save_2 = r'C:\Working\WeeklyWorking\ThisWeek\EN66ARC'
-    result_excel_file = r'C:\Working\WeeklyWorking\ThisWeek\diff_res.xls'
+    res_folder_1 = r'C:\Sage300\EN67A-PU2\ENG'
+    res_folder_2 = r'C:\Sage300\EN67A\ENG'
+    res_folder_save_1 = r'D:\Working\WeeklyWorking\ThisWeek\AM66AENG'
+    res_folder_save_2 = r'D:\Working\WeeklyWorking\ThisWeek\AM67AENG'
+    result_excel_file = r'D:\Working\WeeklyWorking\ThisWeek\am_diff_res_66to67.xls'
     
     res_compare = ResourceCompare(res_folder_1, res_folder_2, res_folder_save_1, res_folder_save_2, result_excel_file, s_runner_home)
+    #res_compare.create_rc_files()
     res_compare.compare_res()
 
 
