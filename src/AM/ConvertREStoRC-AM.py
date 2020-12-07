@@ -29,6 +29,11 @@ s_RC_save_home = r'D:\AM66AENG'
 #os.chdir(s_runner_home)
 
 
+s_UI_home = r'D:\Documents\OEMDocuments\RMDocs\RM67A\PU1\Temp' #\\Activation
+s_runner_home = r'D:\Dev\ResourceHacker'
+s_RC_save_home = r'D:\Documents\OEMDocuments\RMDocs\RM67A\PU1\Temp'
+
+
 CopyENGProject.CopyENGProject.copyFiles(s_UI_home, s_RC_save_home)
 
 CopyENGProject.CopyENGProject.convertRESToRC(s_runner_home, s_UI_home, s_RC_save_home)
