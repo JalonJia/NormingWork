@@ -61,6 +61,34 @@ def upgrade_vb_projects(s_VBCode_path, s_compile_to, s_module, s_version, b_comp
                     ReplaceInFile.replace_infile(s_filepath, s_from_list, s_to_list)
 
 
+def upgrade_vb_projects_compatible(s_VBCode_path, s_compatible_mode) :
+    '''
+    s_module: 模块名，例如AQ，BS等
+    s_version: 要升级到的版本, 例如66A
+    '''
+    print('----------------------upgrade files------------------------------------')
+
+    #replace from *.vbp
+    s_from_list = [ r'CompatibleMode=".?"']
+    s_to_list = [f'CompatibleMode="{s_compatible_mode}"']
+    s_to_list_eng = [f'CompatibleMode="{s_compatible_mode}"']
+
+    for root, dirs, files in os.walk(s_VBCode_path): #files会得到目录下的文件（不包括文件夹）；dirs会获取到每个文件夹下面的子目录；root会遍历每个子文件夹
+        # print('Current Folder: ', root)
+        for file in files:
+            s_filename = os.path.splitext(file)[0] #文件名
+            s_filetype = os.path.splitext(file)[1] #文件后缀
+            
+            s_filepath = os.path.join(root, file)
+            if not (os.path.exists(s_filepath)):
+                continue
+            
+            if (s_filetype == '.vbp') and ((len(s_filename) == len('ACCPACXX0000')) or (len(s_filename) == len('ACCPACXX0000ENG')) or (len(s_filename) == len('XX66AENGClient'))) :                
+                #print(f'Current File: {s_filepath}')
+                if (s_filename[-3:].lower() == 'eng') or (s_filename[-6:].lower() == 'client'):
+                    ReplaceInFile.replace_infile(s_filepath, s_from_list, s_to_list_eng)
+                else:
+                    ReplaceInFile.replace_infile(s_filepath, s_from_list, s_to_list)
 
 
 def upgrade_view_projects(s_viewCode_path, s_module, s_version, s_from_ver = '\d\d') :

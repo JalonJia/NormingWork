@@ -56,6 +56,7 @@ def replace_re(s_text, s_from, s_to) :
     pattern = re.compile(s_from)    
     match_result = re.match(pattern, s_text)
     if match_result:
+        # print(f'替换字符串{match_result} , {s_to}, {s_text}')
         s_result = re.sub(pattern, s_to, s_text)
     #     s_result = s_result.replace(match_result.group(), s_to)
         print(f'将字符串{match_result.group()} 替换为：{s_result}')

@@ -147,7 +147,7 @@ class ReadExcel(object):
             for row in range(sheet.nrows):
                 s_appl = str(sheet.row_values(row)[0][:2])
                 b_created = (str(sheet.row_values(row)[11][:1]) == 'Y') #L列如果是Y表示已经创建过了
-                if len(s_appl)>0 and (s_appl in 'EN|AM|NP|IS|BS|VS|VI|SS|PS|') :
+                if len(s_appl)>0 and (s_appl in 'EN|AM|NP|IS|BS|VS|VI|SS|PS|PO|') :
                     if table.table_name > '' and (not table.b_created):
                         last_table = copy.deepcopy(table)
                         tables.append(last_table)
@@ -276,11 +276,12 @@ def read_excel():
 #Testing
 if __name__ == '__main__' :
     #print(xlrd.XL_CELL_NUMBER)
-    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU1\Design\EN66APU1_TablesChange.xlsx')
-    #x.read_excel()
+    x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM67A\PU2\Design\EN67A_PU2_TablesChange.xlsx')
+    #x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU2\Design\EN66A_PU2_TablesChange.xlsx')
+    #x = ReadExcel(r'D:\Documents\OEMDocuments\RMDocs\RM67A\PU0\Design\POTables.xlsx')
     #x.read_excel_create_resource(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\temp.txt')
-    x.generate_table_changes(r'D:\Documents\OEMDocuments\RMDocs\RM66A\PU1\Temp')
-
+    x.generate_table_changes(r'D:\Documents\OEMDocuments\RMDocs\RM67A\PU2\Temp')
+ 
     # s_mask_or_list = '(%-12N)'
     # s_from = r'(.*)%[-](.*)[\)*]$'
     # s_to = r'Key\2Mask'

@@ -54,5 +54,11 @@ class RESTool(object):
         self.runCommand(s_cmd)
 
 
-       
+if __name__ == '__main__' :
+    s_UI_home = r'D:\Documents\OEMDocuments\RMDocs\RM67A\PU1\Temp\EN67AENG.DLL' #\\Activation
+    s_runner_home = r'D:\Dev\ResourceHacker'
+    s_RC_save_home = r'D:\Documents\OEMDocuments\RMDocs\RM67A\PU1\Temp'
+ 
+    resTool = RESTool(s_runner_home)
+    resTool.convertRESToRC(s_UI_home, s_RC_save_home)
 
