@@ -76,3 +76,29 @@ class CopyENGProject(object):
                     RES_util.convertRESToRC(s_filepath, s_to_folderpath)
                     
 
+    @staticmethod
+    def convertRCToRES(s_runner_home, s_UI_home, s_RES_save_home):
+        for root, dirs, files in os.walk(s_UI_home): #files会得到目录下的文件（不包括文件夹）；dirs会获取到每个文件夹下面的子目录；root会遍历每个子文件夹
+            #print('Folder: ', root)
+            s_relative_path = root[len(s_UI_home): ]
+            #print('s_relative_path: ', s_relative_path)
+            for file in files:
+                s_filename = os.path.splitext(file)[0] #文件名
+                s_filetype = os.path.splitext(file)[1].lower() #文件后缀
+                #print(s_filetype)
+
+                if ((s_filetype == '.rc') and (not s_filename.endswith('icon'))):
+                    s_filepath = os.path.join(root, file)
+                    s_to_folderpath = s_RES_save_home + s_relative_path #os.path.join(s_RC_save_home, s_relative_path)
+                    s_to_filepath = os.path.join(s_to_folderpath, os.path.splitext(file)[0])
+                    #s_to_filepath_CHN = os.path.join(s_to_folderpath, os.path.splitext(file)[0].replace('ENG', 'CHN'))
+                    #print('s_convert_from: ', s_filepath)
+                    #print(f's_save_to: {s_to_filepath}.rc')
+
+                    if not os.path.exists(s_to_folderpath):
+                        os.makedirs(s_to_folderpath, mode=0o777, exist_ok=True)
+
+                    RES_util = RESTool.RESTool(s_runner_home)
+                    RES_util.convertRCToRES(s_filepath, s_to_folderpath)
+                    
+

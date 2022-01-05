@@ -13,9 +13,9 @@ TODO: 使用Resource Hacker将RES文件中的字符串提取出来生成rc文件
 然后将ENG文件改成CHN
 '''
 
-s_UI_home = r'C:\Pluswdev\AM63A\Source\VBProgram' #\\Activation
+s_UI_home = r'C:\Pluswdev\EN67A\VBSource' #\\Activation
 s_runner_home = r'D:\Dev\ResourceHacker'
-s_RC_save_home = r'D:\Working\WeeklyWorking\ThisWeek\AM63AENG'
+s_RC_save_home = r'C:\Pluswdev\EN67A\EN67ACNT'
 
 #Test Funtions
 #sPath = "D:\Pluswdev\AM65A\UISource"
@@ -32,5 +32,4 @@ s_RC_save_home = r'D:\Working\WeeklyWorking\ThisWeek\AM63AENG'
 CopyENGProject.CopyENGProject.copyFiles(s_UI_home, s_RC_save_home)
 
 CopyENGProject.CopyENGProject.convertRESToRC(s_runner_home, s_UI_home, s_RC_save_home)
-
 

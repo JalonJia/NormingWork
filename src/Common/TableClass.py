@@ -2,8 +2,11 @@
 TODO: 提供以下功能：
 1. 定义数据表结构
 2. 将数据表结构输出为格式化的字符串
+3. 生成HR的数据字典xml文件
 '''
 from enum import Enum
+from os import replace
+from re import split
 
 class FieldType(Enum):
     t_string = 1
@@ -19,17 +22,19 @@ class Field(object):
     '''
     定义字段
     '''
-    def __init__(self, s_field_name = '', s_type = 'string', i_length = 0, i_decimal = 0, s_desc = '', s_mask_list = '', b_is_key = False):
+    def __init__(self, s_field_name = '', s_type = 'string', i_length = 0, i_decimal = 0, s_desc = '', s_mask_list = '', b_is_key = False, s_desc2 = '', s_default = ''):
         self.field_name = s_field_name.lower()
         self.type = s_type.lower()
-        if self.type == 'bcd':
+        if self.type == 'bcd' or self.type == 'decimal':
             self.type = 'number'
         self.length = i_length
         self.decimal = i_decimal
         self.desc = s_desc
+        self.desc2 = s_desc2
         self.mask_or_list = s_mask_list
         self.is_key = b_is_key
-    
+        self.default = s_default
+  
 
     def __str__(self):
         '''
@@ -140,21 +145,135 @@ class Field(object):
         field_idx = '%s_IDX(%s)' % (s_table_name, upper_field)
         field_code = '        m_v%s.Put(%s, m_%sValues.%s);' % (s_table_name, field_idx, s_table_name, field_varname)
         return field_code 
+        
+
+    def get_sql_script(self):
+        '''
+        生成创建此字段的SQL语句，类似于
+        LVLEAVEWF_REQID             		NVARCHAR(36)     	DEFAULT '' NOT NULL,
+        LVLEAVEWF_LINENUM           		INT     			DEFAULT 1 NOT NULL,
+        LVLEAVEWF_CREATEDT 		   	 		DATETIME       	 	DEFAULT GETDATE(),
+        LVLEAVEWF_CREATEBY 		    		NVARCHAR(36)     	DEFAULT '',
+        LVLEAVEWF_WFID              		NVARCHAR(36)     	DEFAULT '', 
+        LVLEAVEWF_WFUSER            		NVARCHAR(36)     	DEFAULT '',
+        LVLEAVEWF_WFDATE            		DATETIME        	DEFAULT GETDATE(),
+        LVLEAVEWF_WFACTION          		NVARCHAR(36)     	DEFAULT '',-- 1 Request 2 Approve 3 Reject 8 Cancel
+        LVLEAVEWF_WFTIME            		NVARCHAR(36)     	DEFAULT '',
+        LVLEAVEWF_LINENOTES         		NVARCHAR(1024)    	DEFAULT '', 
+        LVLEAVEWF_LSTMNTDT 					DATETIME 			DEFAULT GETDATE(),
+        LVLEAVEWF_LSTMNTBY 					NVARCHAR(36) 		DEFAULT '',
+        '''
+
+        s_type_name = self.type.upper()
+        if self.type.lower() == 'number':
+            s_type_name = 'DECIMAL(%-d, %-d)' % (self.length, self.decimal)
+        elif self.type.lower() in 'string|nvarchar':
+            s_type_name = 'NVARCHAR(%-d)' % self.length
+
+        s_default = self.default
+        if self.type.lower() == 'datetime':
+            s_default = s_default.replace('#', '').replace('-', '')
+        elif self.type.lower() in 'string|nvarchar' and (len(s_default) == 0):
+            s_default = "''"
+        elif len(s_default) == 0:
+            s_default = '0'
+
+        s_allownull = ''
+        if self.is_key:
+            s_allownull = 'NOT NULL'
+
+        s_sql = ('%-4s%-36s%-24s%-8s%-16s%-16s' % (' ', self.field_name.upper(), s_type_name, 'DEFAULT', s_default, s_allownull)).rstrip()
+
+        return s_sql
+
+
+    def get_dictionary_script(self, iIndex = 0):
+        '''
+        生成字段的数据字典，类似于
+        <column>
+        <index>5</index>
+        <name>LVLEAVE_LVFLAG</name>
+        <description>Banked Overtime,0:No, 1:Yes</description>
+        <description_cn>是否倒休，0:否, 1:是</description_cn>
+        <type>int</type>
+        <initialValue>0</initialValue>
+        <allownulls>true</allownulls>
+        <mask></mask>
+        <attribute></attribute>
+        </column>
+        '''
+
+        s_type_name = self.type.lower()
+        s_size = ''
+        s_precision = ''
+        if self.type.lower() == 'number':
+            s_type_name = 'decimal'
+            s_size = '\n    <size>%s</size>' % self.length
+            s_precision = '\n    <precision>%s</precision>' % self.decimal
+        elif self.type.lower() in 'string|nvarchar':
+            s_type_name = 'varchar'
+            s_size = '\n    <size>%d</size>' % self.length
+
+        s_default = self.default
+        if self.type.lower() in 'datetime|string|nvarchar':
+            s_default = self.default
+        elif len(s_default) == 0:
+            s_default = '0'
+
+        s_allownull = 'true'
+        if self.is_key:
+            s_allownull = 'false'  
+
+        s_dictionary = '''<column>
+    <index>%d</index>
+    <name>%s</name>
+    <description>%s</description>
+    <description_cn>%s</description_cn>
+    <type>%s</type>%s%s
+    <initialValue>%s</initialValue>
+    <allownulls>%s</allownulls>
+    <mask></mask>
+    <attribute></attribute>
+</column>        
+''' % (iIndex, self.field_name.upper(), self.desc.rstrip(), self.desc2.rstrip(), s_type_name, s_size, s_precision, s_default, s_allownull)
+
+        return s_dictionary
+
+    def get_upgrade_sql(self):
+        '''
+        生成Upgrade此字段的SQL语句，类似于
+        UPGRADE LVLEAVEWF SET LVLEAVEWF_REQID='';
+        '''
+
+        s_default = self.default
+        if self.type.lower() == 'datetime':
+            s_default = s_default.replace('#', '').replace('-', '')
+        elif self.type.lower() in 'string|nvarchar' and (len(s_default) == 0):
+            s_default = "''"
+        elif len(s_default) == 0:
+            s_default = '0'
+
+        s_sql = ('SET %s = %s' % (self.field_name.upper(), s_default)).rstrip()
+
+        return s_sql
+
 
 class Table(object):
     '''
     定义Table的数据结构
     '''
 
-    def __init__(self, s_table_name, s_table_desc='', s_key_desc='', b_created = False):
+    def __init__(self, s_table_name, s_table_desc='', s_key_desc='', b_created = False, s_table_desc2='', b_new = False):
         '''
         Constructor
         '''
         self.table_name = s_table_name
         self.table_desc = s_table_desc
+        self.table_desc2 = s_table_desc2 #中文描述
         self.key_desc = s_key_desc
         self.fields = []
         self.b_created = b_created
+        self.isnew = b_new
 
 
     def add_field(self, field):
@@ -280,6 +399,106 @@ class Table(object):
         return s_code
 
 
+    def get_table_sqlscript(self):
+        '''
+        得到表结构的tbl内容，不包括字段描述
+        '''
+
+        if len(self.fields) == 0:
+            return ''
+
+        b_split_key = False
+        s_keys = ''
+        
+        s_script = ''
+        if self.isnew:
+            s_script += "IF EXISTS (SELECT * FROM dbo.sysobjects WHERE id = object_id(N'%s') AND objectproperty(id, N'IsUserTable') = 1)\n" % self.table_name.upper()
+            s_script += "DROP TABLE %s;\n\n" % self.table_name.upper()
+            s_script += "CREATE TABLE %s(\n" % self.table_name.upper()
+
+
+        for field in self.fields:
+            if not b_split_key and field.is_key == False:
+                b_split_key = True
+            
+            if field.is_key:
+                if len(s_keys)>0:
+                    s_keys += ', '
+                s_keys += field.field_name.upper()
+
+            if self.isnew:
+                s_script += field.get_sql_script()
+                s_script += ',\n'
+            else:
+                s_script += 'alter table %-16s add %s;\n' % (self.table_name.upper(), field.get_sql_script())
+            
+
+        if self.isnew:
+            s_primary_key = '%-4sPRIMARY KEY (%s)\n' % (' ', s_keys)
+            s_script += s_primary_key
+            s_script += ");\n"
+
+        return s_script
+
+    def get_table_upgradesql(self):
+        '''
+        得到表结构的Upgrade语句
+        '''
+
+        if len(self.fields) == 0 or self.isnew:
+            return ''
+
+        s_upgrade_sql = ''
+        
+        for field in self.fields:
+            s_upgrade_sql += 'UPDATE %s %s;\n' % (self.table_name, field.get_upgrade_sql())
+            
+        return s_upgrade_sql
+
+
+    def get_table_dictionary(self):
+        '''
+        得到HR表结构的数据字典
+        '''
+
+        if len(self.fields) == 0:
+            return ''
+
+        b_split_key = False 
+        s_keys = ''
+        i_index = 1
+        
+        s_script = ''
+        if self.isnew:
+            s_script += '<?xml version="1.0" encoding="UTF-8"?>'
+            s_script += "\n<table>"
+            s_script += "\n<description>%s</description><columns>\n" % self.table_desc2
+
+        for field in self.fields:
+            if not b_split_key and field.is_key == False:
+                b_split_key = True
+            
+            if field.is_key:
+                s_keys += '''<column>
+    <colname>%s</colname>
+    <ascdesc>ASC</ascdesc>
+</column>
+''' % field.field_name.upper()
+
+            s_script += field.get_dictionary_script(i_index)
+            i_index += 1
+           
+
+        if self.isnew:
+            s_primary_key = '''</columns><constraint><primarykey>
+<pkconstraintname>%s_KEY_0</pkconstraintname><columns>
+%s</columns></primarykey></constraint></table>
+''' % (self.table_name.upper(), s_keys)
+            s_script += s_primary_key
+
+        return s_script
+
+
     def generate_tbl_file(self, s_file_path):
         '''
         生成tbl文件
@@ -314,3 +533,70 @@ class Table(object):
         with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
             f_w.write(s_code)
     
+
+    def generate_sql_file(self, s_file_path):
+        '''
+        生成创建表的sql文件
+        '''
+        s_sql = self.get_table_sqlscript()
+        if len(s_sql) == 0:
+            return 
+        
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(s_sql)
+
+
+class Security(object):
+    '''
+    定义权限的数据结构
+    '''
+
+    def __init__(self, s_name, s_desc='', s_desc2='', s_sequence='', b_created = False):
+        '''
+        Constructor
+        '''
+        self.sec_name = s_name
+        self.sec_sequence = s_sequence
+        self.sec_desc = s_desc
+        self.sec_desc2 = s_desc2 #中文描述
+        self.b_created = b_created
+
+
+    def get_initsql(self):
+        '''
+        得到插入权限表的语句
+        '''
+
+        if len(self.sec_name) == 0 or self.b_created:
+            return ''
+
+        s_module = self.sec_name[:2]
+        s_sql = "INSERT INTO ASSEC(ASSEC_MODULEID,ASSEC_SECID,ASSEC_SEQUENCE,ASSEC_SECDESC) VALUES('%s','%s',%s,'%s');" % (s_module, self.sec_name, self.sec_sequence, self.sec_desc)
+            
+        return s_sql
+
+
+    def get_initgroup_sql(self):
+        '''
+        得到插入权限组的语句, 类似：
+        INSERT INTO ASGRPSEC(ASGRPSEC_GRPID,ASGRPSEC_MODULEID,ASGRPSEC_SECID,ASGRPSEC_GRPDESC) VALUES('ADMIN','BK','BK074','Administrator');
+        '''
+
+        s_groups = [ 
+            ['ADMIN', 'Administrator'], 
+            ['HRM', 'HR Manager'], 
+            ['FM', 'Financial Manager'], 
+            ['GM', 'General Manager'], 
+            # ['SALES', 'Sales'] 
+        ]
+
+        if len(self.sec_name) == 0 or self.b_created:
+            return ''
+
+        s_insert = 'INSERT INTO ASGRPSEC(ASGRPSEC_GRPID,ASGRPSEC_MODULEID,ASGRPSEC_SECID,ASGRPSEC_GRPDESC) VALUES'
+        s_module = self.sec_name[:2]
+        s_sql = ''
+        for grp in s_groups:
+            s_sql += "%s('%s','%s','%s','%s');\n" % (s_insert, grp[0], s_module, self.sec_name, grp[1])
+            
+        return s_sql

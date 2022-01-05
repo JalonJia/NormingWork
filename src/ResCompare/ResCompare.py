@@ -222,11 +222,11 @@ class ResourceCompare:
 #Testing
 if __name__ == '__main__' :
     s_runner_home = r'D:\Dev\ResourceHacker'
-    res_folder_1 = r'C:\Sage300\EN67A-PU2\ENG'
-    res_folder_2 = r'C:\Sage300\EN67A\ENG'
-    res_folder_save_1 = r'D:\Working\WeeklyWorking\ThisWeek\AM66AENG'
-    res_folder_save_2 = r'D:\Working\WeeklyWorking\ThisWeek\AM67AENG'
-    result_excel_file = r'D:\Working\WeeklyWorking\ThisWeek\am_diff_res_66to67.xls'
+    res_folder_1 = r'C:\Sage300\EN68A-PU0\ENG'
+    res_folder_2 = r'C:\Sage300\EN68Ax\ENG'
+    res_folder_save_1 = r'D:\Working\WeeklyWorking\0ThisWeek\RM68APU0ENG'
+    res_folder_save_2 = r'D:\Working\WeeklyWorking\0ThisWeek\RM68APU1ENG'
+    result_excel_file = r'D:\Working\WeeklyWorking\0ThisWeek\rm_diff_res_RM68APU0to68APU1.xls'
     
     res_compare = ResourceCompare(res_folder_1, res_folder_2, res_folder_save_1, res_folder_save_2, result_excel_file, s_runner_home)
     #res_compare.create_rc_files()
