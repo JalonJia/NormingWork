@@ -221,16 +221,18 @@ class ResourceCompare:
 
 #Testing
 if __name__ == '__main__' :
+    s_oldversion = 'EN68AX'
+    s_newversion = 'EN69A'
     s_runner_home = r'D:\Dev\ResourceHacker'
-    res_folder_1 = r'C:\Sage300\EN68A-PU0\ENG'
-    res_folder_2 = r'C:\Sage300\EN68Ax\ENG'
-    res_folder_save_1 = r'D:\Working\WeeklyWorking\0ThisWeek\RM68APU0ENG'
-    res_folder_save_2 = r'D:\Working\WeeklyWorking\0ThisWeek\RM68APU1ENG'
-    result_excel_file = r'D:\Working\WeeklyWorking\0ThisWeek\rm_diff_res_RM68APU0to68APU1.xls'
+    res_folder_1 = r'C:\Sage300\%s\ENG' % (s_oldversion)
+    res_folder_2 = r'C:\Sage300\%s\ENG' % (s_newversion)
+    res_folder_save_1 = r'D:\Working\WeeklyWorking\0ThisWeek\%sENG' % (s_oldversion)
+    res_folder_save_2 = r'D:\Working\WeeklyWorking\0ThisWeek\%sENG' % (s_newversion)
+    result_excel_file = r'D:\Working\WeeklyWorking\0ThisWeek\ResourceDiff_%sto%s.xls' % (s_oldversion, s_newversion)
     
     res_compare = ResourceCompare(res_folder_1, res_folder_2, res_folder_save_1, res_folder_save_2, result_excel_file, s_runner_home)
-    #res_compare.create_rc_files()
-    res_compare.compare_res()
+    res_compare.create_rc_files()
+    #res_compare.compare_res()
 
 
 

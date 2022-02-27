@@ -24,22 +24,24 @@ class RESTool(object):
         fpread = fp.read()
         print(fpread)
 
-    def convertRESToRC(self, s_RES_file, s_RC_folder):
+    def convertRESToRC(self, s_RES_file, s_RC_folder, s_to_Lang='ENG'):
         '''
         s_RES_file: RES文件，需要具体的文件名及后缀
         s_RC_folder：存放rc文件的文件夹路径，不需要有后缀
         '''
         s_filename = os.path.splitext(os.path.split(s_RES_file)[1])[0]
+        if s_to_Lang != 'ENG':
+            s_filename = s_filename.replace('ENG', s_to_Lang)
         s_RC_filepath = os.path.join(s_RC_folder, s_filename)
 
-        s_cmd = 'ResourceHacker.exe -extract "%s", "%s.rc",  StringTable,,' % (s_RES_file, s_RC_filepath) #路径用""引起来可以避免空格带来的问题
+        s_cmd = 'ResourceHacker.exe -extract "%s", "%s_ori.rc",  StringTable,,' % (s_RES_file, s_RC_filepath) #路径用""引起来可以避免空格带来的问题
         self.runCommand(s_cmd)
 
-        s_cmd = 'ResourceHacker.exe -extract "%s", "%s_icon.rc",  Icon,,' % (s_RES_file, s_RC_filepath)
+        s_cmd = 'ResourceHacker.exe -extract "%s", "%s_icon_ori.rc",  Icon,,' % (s_RES_file, s_RC_filepath)
         self.runCommand(s_cmd)
 
-        s_cmd = 'type "%s_icon.rc" >> "%s.rc"' % (s_RC_filepath, s_RC_filepath) #路径用""引起来可以避免空格带来的问题
-        self.runCommand(s_cmd)
+        #s_cmd = 'type "%s_icon.rc" >> "%s.rc"' % (s_RC_filepath, s_RC_filepath) #路径用""引起来可以避免空格带来的问题
+        #self.runCommand(s_cmd)
 
     
     def convertRCToRES(self, s_RC_file, s_RES_folder):
@@ -49,9 +51,14 @@ class RESTool(object):
         '''
         s_filename = os.path.splitext(os.path.split(s_RC_file)[1])[0]
         s_RES_filepath = os.path.join(s_RES_folder, s_filename)
+        s_ico_filepath = os.path.join(s_RES_folder, 'ICON_101.ico')
 
-        s_cmd = 'ResourceHacker.exe -open "%s" -save "%s.res" -action compile -log NUL' % (s_RC_file, s_RES_filepath) #路径用""引起来可以避免空格带来的问题
+        s_cmd = 'ResourceHacker.exe -open "%s" -save "%s.res" -action compile -log CONSOLE' % (s_RC_file, s_RES_filepath) #路径用""引起来可以避免空格带来的问题
         self.runCommand(s_cmd)
+
+        s_cmd = 'ResourceHacker.exe -open "%s.res" -save "%s.res" -action addskip -res "%s" -mask ICONGROUP,101, -log CONSOLE' % (s_RES_filepath, s_RES_filepath, s_ico_filepath)
+        self.runCommand(s_cmd)
+
 
 
 if __name__ == '__main__' :

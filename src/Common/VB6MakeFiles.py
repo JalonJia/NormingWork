@@ -113,3 +113,34 @@ def comple_vb_projects_compatible(s_VBCode_path, s_vbexe_path, s_compatible_Mode
 
     print(f'Total {l_count} file Compiled')
 
+
+def change_vb_projects_compatible(s_VBCode_path, s_compatible_Mode) :     
+    '''
+    用于修改VB项目的兼容性
+    '''      
+    print('----------------------Start------------------------------------')
+    l_count = 0  
+
+    #replace CompatibleMode back for *.vbp 
+    s_from_list = [r'CompatibleMode=".?"']
+    s_change_to = [f'CompatibleMode="{s_compatible_Mode}"']
+
+    for root, dirs, files in os.walk(s_VBCode_path): #files会得到目录下的文件（不包括文件夹）；dirs会获取到每个文件夹下面的子目录；root会遍历每个子文件夹
+        # print('Current Folder: ', root)
+        for file in files:
+            s_filename = os.path.splitext(file)[0] #文件名
+            s_filetype = os.path.splitext(file)[1] #文件后缀
+            #print(s_filetype)
+            s_filepath = os.path.join(root, file)
+            if not (os.path.exists(s_filepath)):
+                continue
+
+            if (s_filetype == '.vbp') and (s_filename[-3:] != 'EXE') and (len(s_filename) >= len('ACCPACNP0000')) :                
+                print(f'Current File: {s_filepath}')
+                #print(f'Compile: {s_filepath}')
+                
+                ReplaceInFile.replace_infile(s_filepath, s_from_list, s_change_to)
+
+                l_count += 1
+    
+    print(f'Total {l_count} file changed')
