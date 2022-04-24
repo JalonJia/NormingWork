@@ -308,6 +308,14 @@ class CreateHRScriptByExcel(object):
             with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
                 f_w.write(table.get_table_dictionary())
 
+        s_file = os.path.join(file_path, 'table_define_index_%s.sql' % s_date)
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            for table in tables:
+                s_sql = table.get_table_define_index()
+                if len(s_sql)>0:
+                    f_w.write(s_sql)
+                    f_w.write('\n')
+
             
             
     def get_changed_security(self):
@@ -434,12 +442,13 @@ if __name__ == '__main__' :
     #print(xlrd.XL_CELL_NUMBER)
     print('Start:' + time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()))
 
-    x = CreateHRScriptByExcel(r'D:\Working\WorkDocuments\OEMDocuments\HRMSDocs\2021.09\eHRMS2021.09数据流.xlsx')
+    #x = CreateHRScriptByExcel(r'D:\Working\WorkDocuments\OEMDocuments\HRMSDocs\2021.09\eHRMS2021.09数据流.xlsx')
+    x = CreateHRScriptByExcel(r'D:\Working\WeeklyWorking\0ThisWeek\HREXTEMP_Module.xlsx')
     #x.read_excel()
     #x.read_excel_create_resource(r'D:\Documents\OEMDocuments\RMDocs\RM65APU2\temp.txt')
     s_saveto = r'D:\Working\WeeklyWorking\0ThisWeek\Temp'
     x.generate_table_changes(s_saveto)
-    x.generate_security_changes(s_saveto)
+    #x.generate_security_changes(s_saveto)
     
     print('End:' + time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()))
     # s_mask_or_list = '(%-12N)'

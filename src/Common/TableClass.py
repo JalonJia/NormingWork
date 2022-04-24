@@ -257,6 +257,53 @@ class Field(object):
 
         return s_sql
 
+    def get_define_index_sql(self):
+        '''
+        生成HR中DEFINE_INDEX中字段对应的SQL语句，类似于
+        insert into DEFINE_INDEX(MORE1,CAT1,CODE,MORE2,MORE3,DFILE,CAT2,DESCRIPTION,DTYPE,DCLOB,DDATA) 
+        values('LVLEAVE','field','LVLEAVE_OPTIONAL','','','','','','s',
+        '{"javaclass":"cn.com.norming.custom.define.field.BaseField","captionid":"LV/TAB/LVLEAVE/OPTIONAL",
+        "selector":false,"precision":19,"idtype":"NotAId","entitycode":"LVLEAVE","beunique":false,"code":"LVLEAVE_OPTIONAL",
+        "decimal":2,"hibcode":"lvleaveOptional","cat1":"field","$$_jc_":"cn.com.norming.custom.define.field.BaseField","cannull":true,
+        "dtype":"s","datatype":"integer","datalen":255}'
+        ,'');
+        '''
+
+        s_table = self.field_name.upper().split('_')[0]
+        s_subfield = self.field_name.upper().split('_')[1]
+        s_precision = '19'
+        s_decimal = '2'        
+        s_datatype = self.type.lower()
+        s_hibcode = s_table.title() + s_subfield.title()
+        s_datalen = '255'
+
+        if self.type.lower() == 'datetime':
+            s_datatype = 'timestamp'
+            s_datalen = 23
+        elif self.type.lower() in 'string|nvarchar':
+            s_datatype = 'string'
+        elif self.type.lower() == 'number':
+            s_datatype = 'double'
+            s_precision = '18'
+            s_decimal = self.decimal            
+        elif self.type.lower() == 'int':
+            s_datatype = 'integer'
+
+        s_define_index = """\
+insert into DEFINE_INDEX(MORE1,CAT1,CODE,MORE2,MORE3,DFILE,CAT2,DESCRIPTION,DTYPE,DCLOB,DDATA) \
+values('%s','field','%s','','','','','','s',\
+'{"javaclass":"cn.com.norming.custom.define.field.BaseField","captionid":"%s/TAB/%s/%s",\
+"selector":false,"precision":%s,"idtype":"NotAId","entitycode":"%s","beunique":false,"code":"%s",\
+"decimal":%s,"hibcode":"%s","cat1":"field","$$_jc_":"cn.com.norming.custom.define.field.BaseField","cannull":true,\
+"dtype":"s","datatype":"%s","datalen":%s}','');
+""" % (s_table, self.field_name.upper(), 
+            self.field_name.upper()[:2], s_table, s_subfield,
+            s_precision, s_table, self.field_name.upper(),
+            s_decimal, s_hibcode,
+            s_datatype, s_datalen
+        )
+
+        return s_define_index
 
 class Table(object):
     '''
@@ -496,6 +543,20 @@ class Table(object):
 ''' % (self.table_name.upper(), s_keys)
             s_script += s_primary_key
 
+        return s_script
+
+    def get_table_define_index(self):
+        '''
+        得到整个TableHR Define_Index的记录
+        '''
+
+        if len(self.fields) == 0:
+            return ''
+
+        s_script = ''
+        for field in self.fields:
+            s_script += field.get_define_index_sql()
+                    
         return s_script
 
 

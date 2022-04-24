@@ -13,7 +13,7 @@ import VB6MakeFiles
 def upgrade_vb_projects(s_VBCode_path, s_compile_to, s_module, s_version, b_comp_with_Sage60 = False, s_compatible_mode = '0') :
     '''
     s_module: 模块名，例如AQ，BS等
-    s_version: 要升级到的版本, 例如66A
+    s_version: 要升级到的版本, 例如69A
     '''
     print('----------------------upgrade files------------------------------------')
 
@@ -23,7 +23,7 @@ def upgrade_vb_projects(s_VBCode_path, s_compile_to, s_module, s_version, b_comp
 
     #replace from *.vbp
     s_from_list = [r'MinorVer=.?', r'(.*)\\\d\d[A~Z]\\(.*)', r'(.*)%s\d\dA(.*)' % (s_module),  r'CompatibleMode=".?"',
-         r'Path32="(.*)', r'(.*)#2\.1#0; MSCOMCTL.OCX', r'(.*)#2\.1#0; mscomctl.ocx', r'(.*)#2\.1#0; mscomctl.OCX']
+        r'Path32="(.*)', r'(.*)#2\.1#0; MSCOMCTL.OCX', r'(.*)#2\.1#0; mscomctl.ocx', r'(.*)#2\.1#0; mscomctl.OCX']
     s_to_list = ['MinorVer=%s' % (s_version[1:2]), r'\1\\%s\\\2' % (s_version), r'\1%s%s\2' % (s_module, s_version), f'CompatibleMode="{s_compatible_mode}"', 
         f'Path32="{s_compile_to}{s_module}{s_version}"', r'\1#2.0#0; MSCOMCTL.OCX', r'\1#2.0#0; MSCOMCTL.OCX', r'\1#2.0#0; MSCOMCTL.OCX']
     s_to_list_eng = ['MinorVer=%s' % (s_version[1:2]), r'\1\\%s\\\2' % (s_version), r'\1%s%s\2' % (s_module, s_version),  f'CompatibleMode="{s_compatible_mode}"', 

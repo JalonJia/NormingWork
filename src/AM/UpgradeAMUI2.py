@@ -5,6 +5,7 @@ from os.path import join
 import sys
 
 sys.path.append(r'd:\dev\NormingWork\src\Common')
+
 import ReplaceInFile
 import VB6MakeFiles
 import UpgradeVersionUtil
@@ -14,24 +15,24 @@ def upgrade_and_comple(s_VBCode_path, s_vbexe_path, s_compile_to) :
     print('----------------------upgrade_and_comple------------------------------------')
         
     s_vbpath = s_VBCode_path
-    UpgradeVersionUtil.upgrade_vb_projects(s_vbpath, s_compile_to, "AM", '66A', True, '2')
+    #UpgradeVersionUtil.upgrade_vb_projects(s_vbpath, s_compile_to, "AM", '69A', True, '0')
 
     os.chdir(s_vbexe_path)
-    VB6MakeFiles.make_vb_projects(s_VBCode_path, s_vbexe_path)
+    VB6MakeFiles.make_vb_projects(s_VBCode_path, s_vbexe_path, s_compile_to + r'AM69A\CHN')
 
 
 if __name__ == '__main__' :
-    sPath2 = r"D:\\ACCPAC\\"
+    s_compile_to = r'C:\\Sage300\\' #必须使用两个反斜线，否则字符串中包含\S会报错
     s_vb_home = r'C:\Program Files (x86)\Microsoft Visual Studio\VB98'
-    s_UI_home = r'D:\Pluswdev2012\AM66A\UISource'
+    s_UI_home = r'D:\Working\WeeklyWorking\0ThisWeek\AM69ACHN'
     s_View_home = r'D:\Pluswdev\AM67A\ViewSource'
     
-    #upgrade_and_comple(s_UI_home, s_vb_home, sPath2)
-    #VB6MakeFiles.comple_vb_projects_compatible(s_UI_home, s_vb_home, "0", "2")
+    #upgrade_and_comple(s_UI_home, s_vb_home, s_compile_to)
+    VB6MakeFiles.change_vb_projects_compatible(s_UI_home, "2")
     #VB6MakeFiles.make_vb_projects(s_UI_home, s_vb_home)
 
     #UpgradeVersionUtil.upgrade_view_projects(s_View_home, 'AM', '67A', '66')
-    UpgradeVersionUtil.upgrade_view_template(s_View_home, 'AM', '67A')
+    #UpgradeVersionUtil.upgrade_view_template(s_View_home, 'AM', '67A')
 
     #s = []
     #s.append('D:\Pluswdev2012\AM66A\UISource\Accounting\Adjustment\AdjustEntry\AccpacAM1020\AccpacAM1020.vbp')

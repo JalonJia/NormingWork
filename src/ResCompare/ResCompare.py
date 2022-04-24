@@ -221,8 +221,8 @@ class ResourceCompare:
 
 #Testing
 if __name__ == '__main__' :
-    s_oldversion = 'EN68AX'
-    s_newversion = 'EN69A'
+    s_oldversion = 'AM67A'
+    s_newversion = 'AM69A'
     s_runner_home = r'D:\Dev\ResourceHacker'
     res_folder_1 = r'C:\Sage300\%s\ENG' % (s_oldversion)
     res_folder_2 = r'C:\Sage300\%s\ENG' % (s_newversion)
@@ -231,8 +231,8 @@ if __name__ == '__main__' :
     result_excel_file = r'D:\Working\WeeklyWorking\0ThisWeek\ResourceDiff_%sto%s.xls' % (s_oldversion, s_newversion)
     
     res_compare = ResourceCompare(res_folder_1, res_folder_2, res_folder_save_1, res_folder_save_2, result_excel_file, s_runner_home)
-    res_compare.create_rc_files()
-    #res_compare.compare_res()
+    #res_compare.create_rc_files()
+    res_compare.compare_res()
 
 
 
