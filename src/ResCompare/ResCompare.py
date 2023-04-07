@@ -203,7 +203,8 @@ class ResourceCompare:
                 #新文件，都需要记录
                 row_num += 2
                 my_sheet.write(row_num, col_res_file, file_name)
-                my_sheet.write(row_num, col_res_string, self.res_2[file_name]['101'])
+                if '101' in self.res_2[file_name].keys():
+                    my_sheet.write(row_num, col_res_string, self.res_2[file_name]['101'])  
                 row_num += 1
                 for s_id in self.res_2[file_name]:
                     s_res_id = s_id
@@ -221,14 +222,14 @@ class ResourceCompare:
 
 #Testing
 if __name__ == '__main__' :
-    s_oldversion = 'AM67A'
-    s_newversion = 'AM69A'
+    s_oldversion = 'NP64A'
+    s_newversion = 'NP69A'
     s_runner_home = r'D:\Dev\ResourceHacker'
-    res_folder_1 = r'C:\Sage300\%s\ENG' % (s_oldversion)
+    res_folder_1 = r'C:\Sage300\%s\CHN' % (s_oldversion)
     res_folder_2 = r'C:\Sage300\%s\ENG' % (s_newversion)
-    res_folder_save_1 = r'D:\Working\WeeklyWorking\0ThisWeek\%sENG' % (s_oldversion)
-    res_folder_save_2 = r'D:\Working\WeeklyWorking\0ThisWeek\%sENG' % (s_newversion)
-    result_excel_file = r'D:\Working\WeeklyWorking\0ThisWeek\ResourceDiff_%sto%s.xls' % (s_oldversion, s_newversion)
+    res_folder_save_1 = r'D:\Working\02WeeklyWorking\0ThisWeek\%sCHN' % (s_oldversion)
+    res_folder_save_2 = r'D:\Working\02WeeklyWorking\0ThisWeek\%sENG' % (s_newversion)
+    result_excel_file = r'D:\Working\02WeeklyWorking\0ThisWeek\ResourceDiff_%sto%s.xls' % (s_oldversion, s_newversion)
     
     res_compare = ResourceCompare(res_folder_1, res_folder_2, res_folder_save_1, res_folder_save_2, result_excel_file, s_runner_home)
     #res_compare.create_rc_files()

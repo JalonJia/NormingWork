@@ -6,7 +6,14 @@ TODO: 提供以下功能：
 '''
 from enum import Enum
 from os import replace
-from re import split
+from re import split, sub
+
+
+# Indexes
+# CREATE UNIQUE NONCLUSTERED INDEX [index4] ON [dbo].[LVEMPLEAVEY]
+# (
+# 	[TEST] ,	[LVEMPLEAVEY_EMPID] 
+# )
 
 class FieldType(Enum):
     t_string = 1
@@ -22,8 +29,9 @@ class Field(object):
     '''
     定义字段
     '''
-    def __init__(self, s_field_name = '', s_type = 'string', i_length = 0, i_decimal = 0, s_desc = '', s_mask_list = '', b_is_key = False, s_desc2 = '', s_default = ''):
-        self.field_name = s_field_name.lower()
+    def __init__(self, s_field_name = '', s_type = 'string', i_length = 0, i_decimal = 0, s_desc = '', 
+                 s_mask_list = '', b_is_key = False, s_desc2 = '', s_default = '', b_increased = False):
+        self.field_name = s_field_name.upper()
         self.type = s_type.lower()
         if self.type == 'bcd' or self.type == 'decimal':
             self.type = 'number'
@@ -34,6 +42,7 @@ class Field(object):
         self.mask_or_list = s_mask_list
         self.is_key = b_is_key
         self.default = s_default
+        self.auto_increased = b_increased
   
 
     def __str__(self):
@@ -84,6 +93,8 @@ class Field(object):
         elif self.type.lower() == 'integer':
             field_type = 'DBSINT'
         elif self.type.lower() == 'long':
+            field_type = 'DBSLONG'
+        elif self.type.lower() == 'bigint':
             field_type = 'DBSLONG'
         elif self.type.lower() == 'boolean':
             field_type = 'DBSBOOL'
@@ -150,7 +161,7 @@ class Field(object):
     def get_sql_script(self):
         '''
         生成创建此字段的SQL语句，类似于
-        LVLEAVEWF_REQID             		NVARCHAR(36)     	DEFAULT '' NOT NULL,
+        LVLEAVEWF_REQID             		NVARCHAR(36)     	DEFAULT '' NOT NULL     comment '部门id',
         LVLEAVEWF_LINENUM           		INT     			DEFAULT 1 NOT NULL,
         LVLEAVEWF_CREATEDT 		   	 		DATETIME       	 	DEFAULT GETDATE(),
         LVLEAVEWF_CREATEBY 		    		NVARCHAR(36)     	DEFAULT '',
@@ -165,27 +176,139 @@ class Field(object):
         '''
 
         s_type_name = self.type.upper()
-        if self.type.lower() == 'number':
+        if self.type.lower() in 'number|bcd':
             s_type_name = 'DECIMAL(%-d, %-d)' % (self.length, self.decimal)
-        elif self.type.lower() in 'string|nvarchar':
+        elif self.type.lower() in 'string|nvarchar|varchar|text':
             s_type_name = 'NVARCHAR(%-d)' % self.length
+        elif self.type.lower() == 'ntext':
+            s_type_name = 'NVARCHAR(MAX)'
+        elif self.type.lower() == 'blob':
+            s_type_name = 'VARBINARY(MAX)'
 
         s_default = self.default
         if self.type.lower() == 'datetime':
             s_default = s_default.replace('#', '').replace('-', '')
-        elif self.type.lower() in 'string|nvarchar' and (len(s_default) == 0):
+        elif self.type.lower() in 'string|nvarchar|ntext|varchar|text' and (len(s_default) == 0):
             s_default = "''"
         elif len(s_default) == 0:
             s_default = '0'
+                
+        s_default_out = 'DEFAULT ' + s_default
+        if s_type_name == 'VARBINARY(MAX)':
+            s_default_out = ''
 
         s_allownull = ''
         if self.is_key:
             s_allownull = 'NOT NULL'
+        
+        # s_auto_increment = ''
+        if self.auto_increased:
+            s_default_out = 'IDENTITY(1,1)'
+            # s_default_out = ''
 
-        s_sql = ('%-4s%-36s%-24s%-8s%-16s%-16s' % (' ', self.field_name.upper(), s_type_name, 'DEFAULT', s_default, s_allownull)).rstrip()
+        s_sql = ('%-4s%-36s%-24s%-24s%-16s' % (' ', self.field_name.upper(), s_type_name, s_default_out, s_allownull)).rstrip()
 
         return s_sql
 
+    def get_field_desc_script(self, s_table_name):
+        '''
+        生成字段的备注，类似于
+        EXEC sys.sp_addextendedproperty @name=N'MS_Description', @value=N'Test ID' , 
+        @level0type=N'SCHEMA',@level0name=N'dbo', @level1type=N'TABLE',@level1name=N'test1', 
+        @level2type=N'COLUMN',@level2name=N'test_id';
+        '''
+
+        s_sql = ''
+        if len(self.desc) > 0:
+            s_sql = "EXEC sys.sp_addextendedproperty N'MS_Description', N'%s' , N'SCHEMA', N'dbo', N'TABLE', N'%s', N'COLUMN', N'%s';\n" \
+                % (self.desc, s_table_name, self.field_name.upper())
+
+        return s_sql
+
+    def get_field_var_name_java(self):
+        '''
+        生成字段对应的驼峰式Jave变量名，例如"USER_ID"对应userId
+        '''
+        return sub('_([a-zA-Z])', lambda m: (m.group(1).upper()), self.field_name.lower())
+
+
+    def get_field_define_java(self):
+        '''
+        生成字段的java定义，类似于
+        public static final String userId = "user_id";
+        '''
+
+        s_def = ''
+        if len(self.field_name) > 0:
+            s_def_name = self.get_field_var_name_java()
+            s_def = "        public static final String %s = '%s';\n" \
+                % (s_def_name, self.field_name.upper())
+
+        return s_def
+
+    def get_field_getset_method_java(self, s_table_class_name):
+        '''
+        生成字段的java Get/Set方法，类似于
+        public Long getUserId() {
+            return super.getLong(Columns.userId);
+        }
+
+        public SysUserEntity setUserId(Long userId) {
+            super.set(Columns.userId, userId);
+            return this;
+        }        
+        '''
+
+        s_java_type = self.type.lower()
+        if s_java_type == 'bigint':
+            s_java_type = 'Long'
+        elif s_java_type in 'number|decimal|bcd':
+            s_java_type = 'Double'
+        elif self.type.lower() in 'date|time|datetime':
+            s_java_type = 'Date'
+        elif self.type.lower() in 'integer|int':
+            s_java_type = 'Integer'
+        elif self.type.lower() in 'string|nvarchar|ntext|varchar|text':
+            s_java_type = 'String'
+        elif s_java_type == 'blob':
+            s_java_type = 'byte[]'
+
+        s_java_type = s_java_type[0 : 1].upper() + s_java_type[1 : ]
+        s_def_name = self.get_field_var_name_java()
+        s_def_name2 = s_def_name[0 : 1].upper() + s_def_name[1 : ]
+        s_java_type2 = s_java_type.replace('[', '').replace(']', '')
+
+        s_def = '''\n
+    public %s get%s() {
+        return super.get%s(Columns.%s);
+    }
+
+    public %sEntity set%s(%s %s) {
+        super.set(Columns.%s, %s);
+        return this;
+    }
+        ''' % (s_java_type, s_def_name2, 
+               s_java_type2, s_def_name, 
+               s_table_class_name, s_def_name2, s_java_type, s_def_name, 
+               s_def_name, s_def_name)
+
+        return s_def
+
+
+    def get_field_reources_RMPlus(self, s_table_name, s_language='en'):
+        '''
+        table.enrqn.xxtablename=采购表
+        table.enrqn.docno=单据号
+        '''
+
+        if s_language=='en':
+            s_reource = 'table.%s.%s=%s' % (s_table_name.rstrip().lower(), self.field_name.lower(), self.desc)
+        elif s_language=='cn':
+            s_reource = 'table.%s.%s=%s' % (s_table_name.rstrip().lower(), self.field_name.lower(), self.desc2)
+        else:
+            s_reource = 'table.%s.%s=%s' % (s_table_name.rstrip().lower(), self.field_name.lower(), self.desc)
+
+        return s_reource
 
     def get_dictionary_script(self, iIndex = 0):
         '''
@@ -456,8 +579,10 @@ class Table(object):
 
         b_split_key = False
         s_keys = ''
+        s_fields_desc = ''
+        s_indexes = ''
         
-        s_script = ''
+        s_script = '\n'
         if self.isnew:
             s_script += "IF EXISTS (SELECT * FROM dbo.sysobjects WHERE id = object_id(N'%s') AND objectproperty(id, N'IsUserTable') = 1)\n" % self.table_name.upper()
             s_script += "DROP TABLE %s;\n\n" % self.table_name.upper()
@@ -479,11 +604,14 @@ class Table(object):
             else:
                 s_script += 'alter table %-16s add %s;\n' % (self.table_name.upper(), field.get_sql_script())
             
+            s_fields_desc += field.get_field_desc_script(self.table_name.upper())
 
         if self.isnew:
             s_primary_key = '%-4sPRIMARY KEY (%s)\n' % (' ', s_keys)
             s_script += s_primary_key
             s_script += ");\n"
+
+        s_script += s_fields_desc
 
         return s_script
 
@@ -498,7 +626,7 @@ class Table(object):
         s_upgrade_sql = ''
         
         for field in self.fields:
-            s_upgrade_sql += 'UPDATE %s %s;\n' % (self.table_name, field.get_upgrade_sql())
+            s_upgrade_sql += 'UPDATE %s %s;\n' % (self.table_name.upper(), field.get_upgrade_sql())
             
         return s_upgrade_sql
 
@@ -545,9 +673,9 @@ class Table(object):
 
         return s_script
 
-    def get_table_define_index(self):
+    def get_table_define_index_hr(self):
         '''
-        得到整个TableHR Define_Index的记录
+        得到整个Table HR Define_Index的记录
         '''
 
         if len(self.fields) == 0:
@@ -559,6 +687,91 @@ class Table(object):
                     
         return s_script
 
+    def get_fileds_resources_RMPlus(self, s_language='en'):
+        '''
+        得到表的资源化定义, 类似于
+        table.enrqn=采购表
+        table.enrqn.docno=单据号
+        '''
+
+        s_fields_desc = ''
+        if s_language=='en' and self.table_desc > '':
+            s_reource = 'table.%s=%s\n' % (self.table_name.rstrip().lower(), self.table_desc)
+            s_fields_desc += s_reource
+        elif s_language=='cn' and self.table_desc2 > '':
+            s_reource = 'table.%s=%s\n' % (self.table_name.rstrip().lower(), self.table_desc2)
+            s_fields_desc += s_reource
+
+        for field in self.fields:            
+            s_fields_desc = s_fields_desc + field.get_field_reources_RMPlus(self.table_name, s_language) + "\n"
+
+        # print(s_fields_desc)
+        return s_fields_desc
+
+    def get_table_class_name_java(self):
+        '''
+        生成表名对应的Jave类名，例如"sys_user"对应SysUserEntity
+        '''
+        s_name = sub('_([a-zA-Z])', lambda m: (m.group(1).upper()), self.table_name.lower())
+        s_name = s_name[0: 1].upper() + s_name[1: ]
+
+        return s_name
+
+    def get_table_class_define_java(self):
+        '''
+        生成字段的java类定义        
+        '''
+
+        s_class_name = self.get_table_class_name_java()
+        s_table_name = self.table_name.upper()
+
+        s_first_field = ''
+        if len(self.fields) > 0:
+            s_first_field = self.fields[0].get_field_var_name_java()
+
+        s_fields_define = ''
+        s_fields_getset_method = ''
+        for field in self.fields:
+            s_fields_define += field.get_field_define_java()
+            s_fields_getset_method += field.get_field_getset_method_java(s_class_name)
+
+        s_def = '''package com.norming.platform.system.entity.sys;
+
+import com.norming.platform.dao.sql.Entity;
+
+import java.io.Serializable;
+import java.util.Date;
+
+/**
+ * %s %s %s
+ */
+public class %sEntity extends Entity implements Serializable {
+
+    public static final string table = "%s";
+
+    public %sEntity() {
+        super(table, Columns.%s);
+    }
+
+    /**
+     * 表字段定义
+     */
+    public static final class Columns {
+%s
+    }
+%s
+}
+        ''' % (
+            s_table_name, self.table_desc, self.table_desc2,
+            s_class_name,
+            s_table_name,
+            s_class_name,
+            s_first_field,
+            s_fields_define,
+            s_fields_getset_method
+        )
+
+        return s_def
 
     def generate_tbl_file(self, s_file_path):
         '''
@@ -605,6 +818,17 @@ class Table(object):
         
         with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
             f_w.write(s_sql)
+
+    def generate_class_file_java(self, s_file_path):
+        '''
+        生成java class文件
+        '''
+        s_class = self.get_table_class_define_java()
+        if len(s_class) == 0:
+            return 
+        
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(s_class)
 
 
 class Security(object):
