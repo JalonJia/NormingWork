@@ -33,7 +33,7 @@ if __name__ == '__main__' :
     # s_failed.append(r'D:\Pluswdev\EN69A\EN69AFRA\VBSource\Employees\EmployeeTemplate\AccpacEN1011')
     # s_failed.append(r'D:\Pluswdev\EN69A\EN69AFRA\VBSource\Employees\Employee Register\AccpacEN1013')
     # s_failed.append(r'D:\Pluswdev\EN69A\EN69AFRA\VBSource\Activate\AccpacEN0000')
-    s_failed.append(r'D:\Pluswdev\EN69A\EN69AFRA\VBSource\Workflow\Workflow\AccpacEN1024')
+    s_failed.append(r'D:\Pluswdev\EN70A\VBSource\Reports\GLJournalRequisition\RequisitionStatus\AccpacEN9206')
     for s in s_failed:
         CopyENGProject.CopyENGProject.convertRCToRES(s_runner_home, s, s)
 

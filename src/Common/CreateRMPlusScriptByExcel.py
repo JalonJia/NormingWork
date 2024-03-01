@@ -6,7 +6,7 @@ To Read Excel and then Create DB Scripts
 
 from re import LOCALE
 from time import localtime
-from TableClass import Field, Table, Security
+from TableClass import TableIndex, Field, Table, Security, DropdownList
 import xlrd #安装包：pip install xlrd
 from datetime import date,datetime
 import ReplaceInFile
@@ -129,6 +129,8 @@ class CreateRMPlusScriptByExcel(object):
 
         tables = []
         table = Table('', '')
+
+        dropdowns = {}
         
         #文件位置
         ExcelFile = xlrd.open_workbook(self.file_name)
@@ -159,7 +161,7 @@ class CreateRMPlusScriptByExcel(object):
                         
             #print Each Cell
             for row in range(sheet.nrows):
-                s_table_flag = str(sheet.row_values(row)[0]).strip()
+                s_table_flag = str(sheet.row_values(row)[0]).strip().lower()
                 # if b_new:
                 #     s_table = str(sheet.row_values(row)[0]).strip()
                 # else:
@@ -170,39 +172,45 @@ class CreateRMPlusScriptByExcel(object):
                 #         s_table = ''
 
                 # print(sheet.row_values(row))
-                #M列值==Y表示已经创建过了
-                b_created = (str(sheet.row_values(row)[12]).upper() == 'Y') or (str(sheet.row_values(row)[12]).upper() == 'YES')     
                 
                 #下一个表开始行
-                if (s_table_flag == 'Table'): 
+                if ('table' in s_table_flag): 
                     if (table.table_name > '') and (not table.b_created) and (len(table.fields) > 0):
                         last_table = copy.deepcopy(table)
                         tables.append(last_table)
 
                     table.table_name = sheet.row_values(row)[1].strip().lower()     #B列==表名
                     table.table_desc = sheet.row_values(row)[9].strip()             #J列==表描述-英文
-                    table.table_desc2 = sheet.row_values(row)[10].strip()           #K列==表描述-英文
+                    table.table_desc2 = sheet.row_values(row)[10].strip()           #K列==表描述-中文
+                    #M列值==Y表示已经创建过了
+                    b_created = (str(sheet.row_values(row)[12]).upper() == 'Y') or (str(sheet.row_values(row)[12]).upper() == 'YES')
                     table.fields = []
+                    table.indexes = []
                     table.b_created = b_created
                     table.isnew = b_new
                     continue
 
-                # #待修改表的表头
-                # if (not b_new) and (s_table_flag == 'Table'):
-                #     if table.table_name > '' and (not table.b_created) and (len(table.fields) > 0):
-                #         last_table = copy.deepcopy(table)
-                #         tables.append(last_table)
-
-                #     table.table_name = sheet.row_values(row)[1].strip().lower()
-                #     table.table_desc = sheet.row_values(row)[3].strip().replace('描述 : ', '')
-                #     table.table_desc2 = table.table_desc
-                #     table.fields = []
-                #     table.b_created = b_created
-                #     table.isnew = b_new
-                #     continue
-
                 #B列为字段名
                 tmp_field_name = str(sheet.row_values(row)[1]).strip().lower()
+                #J列为字段英文描述
+                temp_desc = str(sheet.row_values(row)[9]).strip()
+                #K列为字段中文描述
+                temp_desc2 = str(sheet.row_values(row)[10]).strip()
+                #G列为Yes或Y表示是主键字段或不可重复
+                b_unique = False
+                if (str(sheet.row_values(row)[0]).strip() == '*') \
+                    or (str(sheet.row_values(row)[6]).strip().lower() == 'yes') \
+                    or (str(sheet.row_values(row)[6]).strip().lower() == 'y'): 
+                    b_unique = True
+
+                #index
+                if ('index' in s_table_flag):
+                    idx_seq = 1
+                    if len(s_table_flag.strip().split('index')[1]) > 0:
+                        idx_seq = int(s_table_flag.strip().split('index')[1])
+                    ind = TableIndex(tmp_field_name, b_unique, temp_desc, temp_desc2, idx_seq)
+                    table.add_index(ind)
+                    continue
 
                 if (b_new and tmp_field_name != '') \
                     or ((not b_new) and s_table_flag == '+'):
@@ -210,12 +218,6 @@ class CreateRMPlusScriptByExcel(object):
                     #print(sheet.row_values(row)[1])
                     #print(sheet.row_values(row)[5])
                     field = Field()
-
-                    #G列为Yes或Y表示是主键字段
-                    if (str(sheet.row_values(row)[0]).strip() == '*') \
-                        or (sheet.row_values(row)[6].strip().lower() == 'yes') \
-                        or (sheet.row_values(row)[6].strip().lower() == 'y'): 
-                        field.is_key = True
                     
                     if tmp_field_name > '':
                         field.field_name = tmp_field_name
@@ -230,6 +232,10 @@ class CreateRMPlusScriptByExcel(object):
                     if not (temp_field_type in 
                         'bcd|number|long|string|integer|int|bigint|date|time|boolean|decimal|datetime|varchar|nvarchar|text|ntext|blob'): #不是合法的行
                         continue
+                    
+                    field.is_key = b_unique
+                    field.desc = temp_desc
+                    field.desc2 = temp_desc2
                     
                     field.type = temp_field_type
                     if field.type == 'bcd' or field.type == 'decimal':
@@ -247,42 +253,40 @@ class CreateRMPlusScriptByExcel(object):
                     if str(sheet.row_values(row)[4]).strip() > '':
                         field.decimal = int(str(sheet.row_values(row)[4]).strip().split('.')[0])
 
-                    #J列为字段英文描述
-                    if str(sheet.row_values(row)[9]).strip() > '':
-                        field.desc = str(sheet.row_values(row)[9]).strip()
-
-                    #K列为字段英文描述
-                    if str(sheet.row_values(row)[10]).strip() > '':
-                        field.desc2 = str(sheet.row_values(row)[10]).strip()
-
                     #F列为字段默认值
                     if str(sheet.row_values(row)[5]).strip() > '':
                         field.default = str(sheet.row_values(row)[5]).strip()
 
-                    #H列为字段自增标记
+                    #H列为字段是否不允许为空的标记
                     if (sheet.row_values(row)[7].strip().lower() == 'yes') \
                         or (sheet.row_values(row)[7].strip().lower() == 'y'): 
-                        field.auto_increased = True
+                        field.not_null = True
 
                     #I列为Mask/List定义
                     if str(sheet.row_values(row)[8]).strip() > '':
                         s_mask_or_list = str(sheet.row_values(row)[8]).strip()
                         s_from = r'(.*)%[-](.*?)([\)]?)$' #为了匹配(%-12N),对最后一个括号之前的字符使用非贪婪模式
                         s_to = r'Key\2Mask'
-                        s_mask_or_list = ReplaceInFile.replace_re(s_mask_or_list, s_from, s_to)
-                        # s_from = r'(.*)List([\S\s]*)'
-                        # s_to = r'\1List'
-                        # s_mask_or_list = ReplaceInFile.replace_re(s_mask_or_list, s_from, s_to)                        
-                        field.mask_or_list = s_mask_or_list
+                        field.mask_or_list = ReplaceInFile.replace_re(s_mask_or_list, s_from, s_to)
+
+                        if '%' in s_mask_or_list:
+                            field.mask = s_mask_or_list
+                        else:
+                            s_from = r'(.*)List([\S\s]*)'
+                            s_to = r'\1List'
+                            field.list_name = ReplaceInFile.camel_to_underscore(
+                                ReplaceInFile.replace_re(s_mask_or_list, s_from, s_to)).replace('_list', '')
+                            dropdowns[field.list_name] = DropdownList(field.list_name, field.mask_or_list)
+
 
                     table.add_field(field)                   
 
         #最后一个table
-        if table.table_name > '':
+        if (table.table_name > '') and (not table.b_created) and (len(table.fields) > 0):
             last_table = copy.deepcopy(table)
             tables.append(last_table)
 
-        return tables
+        return tables, dropdowns
 
 
     def generate_table_changes(self, file_path):
@@ -292,18 +296,26 @@ class CreateRMPlusScriptByExcel(object):
 
         s_date = time.strftime("%Y-%m-%d",time.localtime())
 
-        tables = self.get_changed_tables()
+        tables = self.get_changed_tables()[0]
         if len(tables) == 0:
             return
-        
+
+        tables.sort(key=lambda x:x.table_name)
+
         if not os.path.exists(file_path):
             os.makedirs(file_path, mode=0o777, exist_ok=True)
         
+        s_file = os.path.join(file_path, 'changed_tables_list_%s.sql' % s_date)
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            for table in tables:
+                f_w.write(table.get_table_desc())
+                f_w.write('\n')
+
         s_file = os.path.join(file_path, 'changed_tables_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
             for table in tables:
                 f_w.write(table.get_table_sqlscript())
-                f_w.write('\n\n')
+                f_w.write('\n')
 
         s_file = os.path.join(file_path, 'upgrade_tables_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
@@ -312,7 +324,21 @@ class CreateRMPlusScriptByExcel(object):
                 if len(s_sql)>0:
                     f_w.write(s_sql)
                     f_w.write('\n')
-                
+
+        s_file = os.path.join(file_path, 'changed_tables_desc_%s.sql' % s_date)
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write('--sp_addextendedproperty sp_updateextendedproperty\n\n')
+            for table in tables:
+                f_w.write(table.get_table_fields_desc_sqlscript())
+                f_w.write('\n')
+
+        s_file = os.path.join(file_path, 'changed_tables_resouces_%s.sql' % s_date)
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write('delete from SYS_TRANS_NM;\n\n')
+            for table in tables:
+                f_w.write(table.get_fileds_resources_SQL_RMPlus())
+                f_w.write('\n')
+
 
         # s_file = os.path.join(file_path, 'messages_en_US_%s.properties' % s_date)
         # with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
@@ -335,13 +361,13 @@ class CreateRMPlusScriptByExcel(object):
         #     s_file = os.path.join(file_path, f'{table.table_name}.sql')
         #     table.generate_sql_file(s_file)
 
-            #类定义
-            s_class = 'java_class\\'
-            s_folder = os.path.join(file_path, f'{s_class}')
-            if not os.path.exists(s_folder):
-                os.makedirs(s_folder, mode=0o777, exist_ok=True)
-            s_file = os.path.join(s_folder, f'{table.get_table_class_name_java()}Entity.java')
-            table.generate_class_file_java(s_file)
+            # #类定义-不需要了
+            # s_class = 'java_class\\'
+            # s_folder = os.path.join(file_path, f'{s_class}')
+            # if not os.path.exists(s_folder):
+            #     os.makedirs(s_folder, mode=0o777, exist_ok=True)
+            # s_file = os.path.join(s_folder, f'{table.get_table_class_name_java()}Entity.java')
+            # table.generate_class_file_java(s_file)
 
             #资源化文件
             s_table = f'i18n\\table\\{table.table_name.lower()}\\'
@@ -355,19 +381,55 @@ class CreateRMPlusScriptByExcel(object):
             with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
                 f_w.write(table.get_fileds_resources_RMPlus('cn'))
 
-
+            # 数据字典 - json格式
             s_new = ''
             if table.isnew:
                 s_new = 'new\\'
-            s_module = table.table_name[0:2].upper() + "\\"
-            s_folder = os.path.join(file_path, f'{s_new}{s_module}')
+            s_module = table.table_name[0:3].upper() + "\\"
+            s_folder = os.path.join(file_path, f'tables\\{s_module}')
             if not os.path.exists(s_folder):
                 os.makedirs(s_folder, mode=0o777, exist_ok=True)
-            s_file = os.path.join(s_folder, f'{table.table_name}.xml')
+            s_file = os.path.join(s_folder, f'{table.table_name}.json')
             with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
-                f_w.write(table.get_table_dictionary())
+                f_w.write(table.get_table_dictionary_RMPlus())
 
-            
+        dorpdowns = self.get_changed_tables()[1]
+        if len(dorpdowns) == 0:
+            return
+
+        s_folder = os.path.join(file_path, 'tables')
+        if not os.path.exists(s_folder):
+            os.makedirs(s_folder, mode=0o777, exist_ok=True)
+        s_file = os.path.join(s_folder, 'table_dict.json')
+        s_next_line = '\n'
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write('{')
+            for dp in dorpdowns.values():
+                f_w.write(f'{s_next_line}    ')
+                f_w.write(dp.get_json_context())
+                s_next_line = ',\n'
+            f_w.write('\n}')
+
+        s_folder = os.path.join(file_path, 'i18n\\dict')
+        if not os.path.exists(s_folder):
+            os.makedirs(s_folder, mode=0o777, exist_ok=True)
+        s_file = os.path.join(s_folder, 'messages_en_US.properties')
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            for dp in dorpdowns.values():
+                f_w.write(dp.get_json_res_eng())
+
+        s_file = os.path.join(s_folder, 'messages_zh_CN.properties')
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            for dp in dorpdowns.values():
+                f_w.write(dp.get_json_res_eng())
+
+        s_file = os.path.join(file_path, 'changed_dict_resouces_%s.sql' % s_date)
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore') as f_w:
+            f_w.write("delete from SYS_TRANS_NM WHERE CATEGORY='Dict';\n\n")
+            for dp in dorpdowns.values():
+                f_w.write(dp.get_resources_SQL_RMPlus())
+                f_w.write('\n')
+
             
     def get_changed_security(self):
         '''

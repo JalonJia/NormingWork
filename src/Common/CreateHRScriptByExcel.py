@@ -311,7 +311,7 @@ class CreateHRScriptByExcel(object):
         s_file = os.path.join(file_path, 'table_define_index_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
             for table in tables:
-                s_sql = table.get_table_define_index()
+                s_sql = table.get_table_define_index_hr()
                 if len(s_sql)>0:
                     f_w.write(s_sql)
                     f_w.write('\n')

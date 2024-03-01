@@ -59,7 +59,7 @@ def replace_re(s_text, s_from, s_to) :
         # print(f'替换字符串{match_result} , {s_to}, {s_text}')
         s_result = re.sub(pattern, s_to, s_text)
     #     s_result = s_result.replace(match_result.group(), s_to)
-        print(f'将字符串{match_result.group()} 替换为：{s_result}')
+        # print(f'将字符串{match_result.group()} 替换为：{s_result}')
         # for g in match_result.groups():
         #     print(g)
     
@@ -87,6 +87,14 @@ def copy_file(src_file, dst_file):
     return True
 
 
+def camel_to_underscore(camel):
+    """此函数用来将驼峰字符串转为下划线分割的字符串
+        camel : 源字符串
+        返回 : 下划线字符串
+    """
+    pattern = r'(?<!^)(?=[A-Z])'
+    underscore = re.sub(pattern, '_', camel).lower()
+    return underscore
 
 
 if __name__ == '__main__' :

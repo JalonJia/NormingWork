@@ -7,13 +7,10 @@ TODO: 提供以下功能：
 from enum import Enum
 from os import replace
 from re import split, sub
+from datetime import date, datetime
+import time
+import json
 
-
-# Indexes
-# CREATE UNIQUE NONCLUSTERED INDEX [index4] ON [dbo].[LVEMPLEAVEY]
-# (
-# 	[TEST] ,	[LVEMPLEAVEY_EMPID] 
-# )
 
 class FieldType(Enum):
     t_string = 1
@@ -25,12 +22,116 @@ class FieldType(Enum):
     t_boolean = 7
 
 
+class TableIndex(object):
+    '''
+    定义字段
+    '''
+
+    def __init__(self, s_index_fields='', b_is_unique=False,
+                 s_desc='', s_desc2='', idx_seq=1):
+        self.index_fields = s_index_fields.upper()
+        self.desc = s_desc
+        self.desc2 = s_desc2
+        self.is_unique = b_is_unique
+        self.seq = idx_seq
+
+    def get_sql_script(self, s_table: str):
+        '''
+        生成创建此Index的SQL语句，类似于
+        CREATE UNIQUE NONCLUSTERED INDEX [index4] ON [dbo].[LVEMPLEAVEY]
+(
+ 	[TEST] ,	[LVEMPLEAVEY_EMPID] 
+)  
+        '''
+
+        s_unique = ""
+        if self.is_unique:
+            s_unique = " UNIQUE"
+
+        time.sleep(0.01)
+        s_index_name = "IDX_" + str(self.seq) + "_" + s_table
+
+        s_sql = """CREATE%s INDEX %s ON %s (%s);\n""" % (
+            s_unique, s_index_name[0:30], s_table, self.index_fields
+        )
+
+        return s_sql
+
+
+class DropdownList(object):
+    '''
+    定义下拉列表
+    '''
+
+    def __init__(self, s_list_name='', s_define=''):
+        self.list_name = s_list_name.lower()
+        self.list_values = {}
+
+        key_values = s_define.splitlines()
+        for element in key_values:
+            if '-' in element:
+                self.list_values[element.split('-')[0].strip()] = element.split('-')[1].strip()
+
+        #特殊情况
+        if self.list_name == 'yes_no':
+            self.list_values["0"] = 'No'
+            self.list_values["1"] = 'Yes'
+
+        if self.list_name == 'yes_no_na':
+            self.list_values["0"] = 'No'
+            self.list_values["1"] = 'Yes'
+            self.list_values["2"] = 'NA'
+
+
+    def get_json_context(self):
+        '''生成类似以下的脚本："yes_no": ["0","1"]'''
+        key_list = list(self.list_values.keys())
+        s_json = (f'"{self.list_name}": {key_list}').replace("'", '"')
+        return s_json
+
+    def get_json_res_eng(self):
+        '''生成类似以下的脚本：dict.yes_no.0=No '''
+        s_json = ''
+        for v, s in self.list_values.items():
+            s_json += f'dict.{self.list_name}.{v}={s}\n'
+        return s_json
+
+    def get_resources_SQL_RMPlus(self):
+        '''
+        得到表的资源化SQL语句, 类似于
+        INSERT INTO SYS_TRANS_NM(RESOURCE_ID, CREATE_BY, UPDATE_BY, RESOURCE_ENG, RESOURCE_CHN, RESOURCE_CHT,
+        RESOURCE_FRA, RESOURCE_ESN, MODULE_CODE, CATEGORY, APP_TYPE)
+        VALUES ('%s', 'SYSTEM', 'SYSTEM', '%s', '%s', '%s', '%s', '%s', '%s', 'Dict', 0);
+        '''
+
+        s_fields_sql = ''
+        s_module = ''
+
+        for v, s in self.list_values.items():
+            s_drop_key = f"dict.{self.list_name}.{v}"
+            s_fmt_desc_en = s.replace("'", "''")
+            s_fmt_desc_cn = s_fmt_desc_en
+            s_one_sql = (
+                            "INSERT INTO SYS_TRANS_NM(RESOURCE_ID, CREATE_BY, UPDATE_BY, RESOURCE_ENG, RESOURCE_CHN, RESOURCE_CHT, "
+                            "RESOURCE_FRA, RESOURCE_ESN, MODULE_CODE, CATEGORY, APP_TYPE) "
+                            "VALUES ('%s', 'SYSTEM', 'SYSTEM', '%s', '%s', '%s', '%s', '%s', '%s', 'Dict', 0);\n") % (
+                            s_drop_key,
+                            s_fmt_desc_en, s_fmt_desc_cn, s_fmt_desc_en, s_fmt_desc_en, s_fmt_desc_en,
+                            s_module
+                        )
+            s_fields_sql += s_one_sql
+
+        # print(s_fields_sql)
+        return s_fields_sql
+
 class Field(object):
     '''
     定义字段
     '''
-    def __init__(self, s_field_name = '', s_type = 'string', i_length = 0, i_decimal = 0, s_desc = '', 
-                 s_mask_list = '', b_is_key = False, s_desc2 = '', s_default = '', b_increased = False):
+
+    def __init__(self, s_field_name='', s_type='string', i_length=0, i_decimal=0, s_desc='',
+                 s_mask_list='', b_is_key=False, s_desc2='', s_default='', b_not_null=False,
+                 s_mask='', s_list_name=''):
         self.field_name = s_field_name.upper()
         self.type = s_type.lower()
         if self.type == 'bcd' or self.type == 'decimal':
@@ -42,34 +143,37 @@ class Field(object):
         self.mask_or_list = s_mask_list
         self.is_key = b_is_key
         self.default = s_default
-        self.auto_increased = b_increased
-  
+        self.not_null = b_not_null
+        self.mask = s_mask
+        self.list_name = s_list_name
 
     def __str__(self):
         '''
         生成与以下标题对齐的字符串
         ##___C-name______C-type______name________type_____elements_____________decimals____validator_____presents_____________flags__________attributes_____________
         '''
+
         str = ''
         ##C-name______C-type______name________type_____
-        str += ('%-4s%-12s%-12s%-12s%-9s' % ('*', self.field_name.lower(), '-', self.field_name.upper(), self.type.lower()))
+        str += ('%-4s%-12s%-12s%-12s%-9s' % (
+        '*', self.field_name.lower(), '-', self.field_name.upper(), self.type.lower()))
 
-        #elements_____________
+        # elements_____________
         if self.type.lower() in 'string|number':
             str += '%-21d' % self.length
         else:
             str += '%-21s' % '-'
-        
-        #decimals____
+
+        # decimals____
         if self.type.lower() == 'number':
             str += '%-12d' % self.decimal
         else:
             str += '%-12s' % '-'
-        
+
         if self.mask_or_list > '':
-            #validator_____
+            # validator_____
             str += '%-14s' % '-'
-            #presents_____________
+            # presents_____________
             str += '%-21s' % self.mask_or_list
 
         return str
@@ -101,7 +205,7 @@ class Field(object):
 
         define_code = '    %s %s%s%s;' % (field_type, self.type.lower()[0], self.field_name.upper(), field_size)
 
-        return define_code 
+        return define_code
 
     def get_init_code(self, s_table_name):
         '''
@@ -126,8 +230,7 @@ class Field(object):
 
         init_code = '        %s;' % (field_init)
 
-        return init_code 
-
+        return init_code
 
     def get_getvalue_code(self, s_table_name):
         '''
@@ -136,7 +239,7 @@ class Field(object):
         upper_field = self.field_name.upper()
         field_varname = self.type.lower()[0] + upper_field
         field_idx = '%s_IDX(%s)' % (s_table_name, upper_field)
-        addr_flag = '' #&符号
+        addr_flag = ''  # &符号
         if self.type.lower() == 'integer' or self.type.lower() == 'long' or self.type.lower() == 'boolean':
             addr_flag = '&'
 
@@ -144,8 +247,9 @@ class Field(object):
         if self.type.lower() == 'string':
             get_str = 'GetString'
 
-        field_code = '        m_v%s.%s(%s, %sm_%sValues.%s);' % (s_table_name, get_str, field_idx, addr_flag, s_table_name, field_varname)
-        return field_code 
+        field_code = '        m_v%s.%s(%s, %sm_%sValues.%s);' % (
+        s_table_name, get_str, field_idx, addr_flag, s_table_name, field_varname)
+        return field_code
 
     def get_putvalue_code(self, s_table_name):
         '''
@@ -155,8 +259,7 @@ class Field(object):
         field_varname = self.type.lower()[0] + upper_field
         field_idx = '%s_IDX(%s)' % (s_table_name, upper_field)
         field_code = '        m_v%s.Put(%s, m_%sValues.%s);' % (s_table_name, field_idx, s_table_name, field_varname)
-        return field_code 
-        
+        return field_code
 
     def get_sql_script(self):
         '''
@@ -184,29 +287,43 @@ class Field(object):
             s_type_name = 'NVARCHAR(MAX)'
         elif self.type.lower() == 'blob':
             s_type_name = 'VARBINARY(MAX)'
+        elif self.type.lower() in 'int|integer|smallint|boolean':
+            s_type_name = 'INT'
+        elif self.type.lower() in 'long|bigint':
+            s_type_name = 'BIGINT'
 
         s_default = self.default
         if self.type.lower() == 'datetime':
             s_default = s_default.replace('#', '').replace('-', '')
-        elif self.type.lower() in 'string|nvarchar|ntext|varchar|text' and (len(s_default) == 0):
-            s_default = "''"
+            if len(s_default) == 0:
+                s_default = '0'
+        elif self.type.lower() in 'string|nvarchar|ntext|varchar|text':
+            if (len(s_default) == 0):
+                s_default = "''"
+            elif ('#' in s_default) or ('(' in s_default):
+                pass
+            else:
+                s_default = f"'{self.default}'"
+        elif self.type.lower() in 'int|integer|long|bigint|smallint|boolean':
+            if len(s_default) == 0:
+                s_default = '0'
+            else:
+                s_default = str(self.default.split('.')[0])
         elif len(s_default) == 0:
             s_default = '0'
-                
+
         s_default_out = 'DEFAULT ' + s_default
         if s_type_name == 'VARBINARY(MAX)':
             s_default_out = ''
 
         s_allownull = ''
-        if self.is_key:
+        if self.is_key or self.not_null:
             s_allownull = 'NOT NULL'
-        
-        # s_auto_increment = ''
-        if self.auto_increased:
-            s_default_out = 'IDENTITY(1,1)'
-            # s_default_out = ''
 
-        s_sql = ('%-4s%-36s%-24s%-24s%-16s' % (' ', self.field_name.upper(), s_type_name, s_default_out, s_allownull)).rstrip()
+        # if self.not_null:
+        #     s_default_out = 'NOT NULL'
+
+        s_sql = ('%-4s%-32s%-20s%-24s%-8s' % (' ', self.field_name.upper(), s_type_name, s_default_out, s_allownull))
 
         return s_sql
 
@@ -220,8 +337,9 @@ class Field(object):
 
         s_sql = ''
         if len(self.desc) > 0:
+            s_fmt_desc = self.desc.replace("'", "''")
             s_sql = "EXEC sys.sp_addextendedproperty N'MS_Description', N'%s' , N'SCHEMA', N'dbo', N'TABLE', N'%s', N'COLUMN', N'%s';\n" \
-                % (self.desc, s_table_name, self.field_name.upper())
+                    % (s_fmt_desc, s_table_name, self.field_name.upper())
 
         return s_sql
 
@@ -230,7 +348,6 @@ class Field(object):
         生成字段对应的驼峰式Jave变量名，例如"USER_ID"对应userId
         '''
         return sub('_([a-zA-Z])', lambda m: (m.group(1).upper()), self.field_name.lower())
-
 
     def get_field_define_java(self):
         '''
@@ -242,7 +359,7 @@ class Field(object):
         if len(self.field_name) > 0:
             s_def_name = self.get_field_var_name_java()
             s_def = "        public static final String %s = '%s';\n" \
-                % (s_def_name, self.field_name.upper())
+                    % (s_def_name, self.field_name.upper())
 
         return s_def
 
@@ -273,9 +390,9 @@ class Field(object):
         elif s_java_type == 'blob':
             s_java_type = 'byte[]'
 
-        s_java_type = s_java_type[0 : 1].upper() + s_java_type[1 : ]
+        s_java_type = s_java_type[0: 1].upper() + s_java_type[1:]
         s_def_name = self.get_field_var_name_java()
-        s_def_name2 = s_def_name[0 : 1].upper() + s_def_name[1 : ]
+        s_def_name2 = s_def_name[0: 1].upper() + s_def_name[1:]
         s_java_type2 = s_java_type.replace('[', '').replace(']', '')
 
         s_def = '''\n
@@ -287,13 +404,12 @@ class Field(object):
         super.set(Columns.%s, %s);
         return this;
     }
-        ''' % (s_java_type, s_def_name2, 
-               s_java_type2, s_def_name, 
-               s_table_class_name, s_def_name2, s_java_type, s_def_name, 
+        ''' % (s_java_type, s_def_name2,
+               s_java_type2, s_def_name,
+               s_table_class_name, s_def_name2, s_java_type, s_def_name,
                s_def_name, s_def_name)
 
         return s_def
-
 
     def get_field_reources_RMPlus(self, s_table_name, s_language='en'):
         '''
@@ -301,16 +417,16 @@ class Field(object):
         table.enrqn.docno=单据号
         '''
 
-        if s_language=='en':
+        if s_language == 'en':
             s_reource = 'table.%s.%s=%s' % (s_table_name.rstrip().lower(), self.field_name.lower(), self.desc)
-        elif s_language=='cn':
+        elif s_language == 'cn':
             s_reource = 'table.%s.%s=%s' % (s_table_name.rstrip().lower(), self.field_name.lower(), self.desc2)
         else:
             s_reource = 'table.%s.%s=%s' % (s_table_name.rstrip().lower(), self.field_name.lower(), self.desc)
 
         return s_reource
 
-    def get_dictionary_script(self, iIndex = 0):
+    def get_dictionary_script(self, iIndex=0):
         '''
         生成字段的数据字典，类似于
         <column>
@@ -345,7 +461,7 @@ class Field(object):
 
         s_allownull = 'true'
         if self.is_key:
-            s_allownull = 'false'  
+            s_allownull = 'false'
 
         s_dictionary = '''<column>
     <index>%d</index>
@@ -358,9 +474,85 @@ class Field(object):
     <mask></mask>
     <attribute></attribute>
 </column>        
-''' % (iIndex, self.field_name.upper(), self.desc.rstrip(), self.desc2.rstrip(), s_type_name, s_size, s_precision, s_default, s_allownull)
+''' % (iIndex, self.field_name.upper(), self.desc.rstrip(), self.desc2.rstrip(), s_type_name, s_size, s_precision,
+       s_default, s_allownull)
 
         return s_dictionary
+
+    def get_dictionary_script_RMPlus(self):
+        '''
+        生成创建此字段的json结构，类似于
+    {
+        "type":"datetime",
+        "isKey": true,
+        "fieldName":"UPDATE_TIME",
+        "length":36,
+        "precision": 0,
+        "initialValue": "",
+        "notNull": true,
+        "mask": "%-36C",
+        "dropdownList": "yes_no",
+        "description": "记录创建时间"
+    }
+        '''
+
+        s_type_name = self.type.upper()
+        if self.type.lower() in 'number|bcd':
+            s_type_name = 'DECIMAL' # 'DECIMAL(%-d, %-d)' % (self.length, self.decimal)
+        elif self.type.lower() in 'string|nvarchar|varchar|text':
+            s_type_name = 'NVARCHAR' #'NVARCHAR(%-d)' % self.length
+        elif self.type.lower() == 'ntext':
+            s_type_name = 'NVARCHAR' #'NVARCHAR(MAX)'
+        elif self.type.lower() == 'blob':
+            s_type_name = 'VARBINARY' #'VARBINARY(MAX)'
+        elif self.type.lower() in 'int|integer|smallint|boolean':
+            s_type_name = 'INT'
+        elif self.type.lower() in 'long|bigint':
+            s_type_name = 'BIGINT'
+
+        s_default = f'"{self.default}"'
+        if self.type.lower() == 'datetime':
+            s_default = s_default.replace('#', '').replace('-', '')
+            if len(self.default) == 0:
+                s_default = '"0"'
+        elif self.type.lower() in 'string|nvarchar|ntext|varchar|text':
+            if (len(self.default) == 0):
+                s_default = '""'
+            elif ('#' in s_default) or ('(' in s_default):
+                pass
+            else:
+                s_default = f'"{self.default}"'
+        elif self.type.lower() in 'int|integer|long|bigint|smallint|boolean':
+            if len(self.default) == 0:
+                s_default = "0"
+            else:
+                s_default = '"' + str(self.default.split('.')[0]) + '"'
+        elif len(s_default) == 0:
+            s_default = '"0"'
+
+        s_allownull = 'true'
+        if self.is_key or self.not_null:
+            s_allownull = 'false'
+
+        # if self.not_null:
+        #     s_default_out = 'NOT NULL'
+
+        s_json = ("""    {
+        "type": "%s",
+        "isKey": %s,
+        "fieldName": "%s",
+        "length": %d,
+        "precision": %d,
+        "initialValue": %s,
+        "notNull": %s,
+        "mask": "%s",
+        "dropdownList": "%s",
+        "description": "%s"
+    }""" %
+                  (s_type_name, str(self.is_key).lower(), self.field_name.upper(),
+                   self.length, self.decimal, s_default, s_allownull, self.mask, self.list_name, self.desc))
+
+        return s_json
 
     def get_upgrade_sql(self):
         '''
@@ -395,7 +587,7 @@ class Field(object):
         s_table = self.field_name.upper().split('_')[0]
         s_subfield = self.field_name.upper().split('_')[1]
         s_precision = '19'
-        s_decimal = '2'        
+        s_decimal = '2'
         s_datatype = self.type.lower()
         s_hibcode = s_table.title() + s_subfield.title()
         s_datalen = '255'
@@ -408,7 +600,7 @@ class Field(object):
         elif self.type.lower() == 'number':
             s_datatype = 'double'
             s_precision = '18'
-            s_decimal = self.decimal            
+            s_decimal = self.decimal
         elif self.type.lower() == 'int':
             s_datatype = 'integer'
 
@@ -419,39 +611,40 @@ values('%s','field','%s','','','','','','s',\
 "selector":false,"precision":%s,"idtype":"NotAId","entitycode":"%s","beunique":false,"code":"%s",\
 "decimal":%s,"hibcode":"%s","cat1":"field","$$_jc_":"cn.com.norming.custom.define.field.BaseField","cannull":true,\
 "dtype":"s","datatype":"%s","datalen":%s}','');
-""" % (s_table, self.field_name.upper(), 
-            self.field_name.upper()[:2], s_table, s_subfield,
-            s_precision, s_table, self.field_name.upper(),
-            s_decimal, s_hibcode,
-            s_datatype, s_datalen
-        )
+""" % (s_table, self.field_name.upper(),
+       self.field_name.upper()[:2], s_table, s_subfield,
+       s_precision, s_table, self.field_name.upper(),
+       s_decimal, s_hibcode,
+       s_datatype, s_datalen
+       )
 
         return s_define_index
+
 
 class Table(object):
     '''
     定义Table的数据结构
     '''
 
-    def __init__(self, s_table_name, s_table_desc='', s_key_desc='', b_created = False, s_table_desc2='', b_new = False):
+    def __init__(self, s_table_name: str, s_table_desc='', s_key_desc='', b_created=False, s_table_desc2='',
+                 b_new=False):
         '''
         Constructor
         '''
         self.table_name = s_table_name
         self.table_desc = s_table_desc
-        self.table_desc2 = s_table_desc2 #中文描述
+        self.table_desc2 = s_table_desc2  # 中文描述
         self.key_desc = s_key_desc
         self.fields = []
         self.b_created = b_created
         self.isnew = b_new
-
+        self.indexes = []
 
     def add_field(self, field):
         '''
         增加字段
         '''
         self.fields.append(field)
-
 
     def remove_field(self, field_name):
         '''
@@ -461,12 +654,17 @@ class Table(object):
             if f.field_name == field_name:
                 self.fields.remove(f)
 
+    def add_index(self, index: TableIndex):
+        '''
+        增加Index
+        '''
+        self.indexes.append(index)
 
     def get_table_define(self):
         '''
         得到表结构的tbl内容，不包括字段描述
         '''
-        b_split_key = False 
+        b_split_key = False
         s_tbl = '#___C-name______C-type______name________type_____elements_____________decimals____validator_____presents_____________flags__________attributes_____________\n'
 
         for field in self.fields:
@@ -476,11 +674,10 @@ class Table(object):
                 s_tbl += '!   audt_User   -           AUDTUSER    string   SIZEOF_USERID        -\n'
                 s_tbl += '!   audt_Org    -           AUDTORG     string   SIZEOF_ORGID         -\n'
                 b_split_key = True
-                
+
             s_tbl += str(field)
             s_tbl += '\n'
         return s_tbl
-
 
     def get_table_patten(self):
         '''
@@ -489,7 +686,7 @@ class Table(object):
         if len(self.table_desc) == 0:
             return ''
 
-        s_ptn =  'CPPVIEW                     ; pattern type (C++ template)\n'
+        s_ptn = 'CPPVIEW                     ; pattern type (C++ template)\n'
         s_ptn += 'AAAA=%-23s; application id - symbolic constants\n' % self.table_name[:2]
         s_ptn += 'aaaa=%-23s; application id - filenames\n' % self.table_name[:2].lower()
         s_ptn += 'ZZZZ=%-23s; view name - symbolic constants and module name\n' % self.table_name
@@ -506,7 +703,7 @@ class Table(object):
                 s_ptn += ","
             s_ptn += f"'{c}'"
             i += 1
-        
+
         for i in range(i, 8):
             s_ptn += f",' '"
         s_ptn += "}\n"
@@ -514,27 +711,30 @@ class Table(object):
 
         return s_ptn
 
-
     def get_fileds_desc(self):
         '''
         得到表的字段描述
         '''
         s_fields_desc = ''
         if self.table_desc > '':
-            s_fields_desc += f'\n#include "{self.table_name}.i"\n'            
-            res_str = 'IDS_%s_VIEW_NAME%s,        "%s"\n' % (self.table_name, ' ' * (15-len(self.table_name)), self.table_desc)
-            #print(res_str)
+            s_fields_desc += f'\n#include "{self.table_name}.i"\n'
+            res_str = 'IDS_%s_VIEW_NAME%s,        "%s"\n' % (
+            self.table_name, ' ' * (15 - len(self.table_name)), self.table_desc)
+            # print(res_str)
             s_fields_desc += res_str
-            res_str = 'IDS_%s_VIEW_NOUN%s,        "%s"\n' % (self.table_name, ' ' * (15-len(self.table_name)), self.table_desc)
-            #print(res_str)
+            res_str = 'IDS_%s_VIEW_NOUN%s,        "%s"\n' % (
+            self.table_name, ' ' * (15 - len(self.table_name)), self.table_desc)
+            # print(res_str)
             s_fields_desc += res_str
-            res_str = 'IDS_%s_KEY_NAME%s,        "%s"\n' % (self.table_name, ' ' * (16-len(self.table_name)), self.table_desc)
-            #print(res_str)
+            res_str = 'IDS_%s_KEY_NAME%s,        "%s"\n' % (
+            self.table_name, ' ' * (16 - len(self.table_name)), self.table_desc)
+            # print(res_str)
             s_fields_desc += res_str
 
-        for field in self.fields:            
-            res_str = 'IDS_%s_%s_FLD%s,        "%s"\n' % (self.table_name, field.field_name, ' ' * (20-len(self.table_name)-len(field.field_name)), field.desc)
-            #print(res_str)
+        for field in self.fields:
+            res_str = 'IDS_%s_%s_FLD%s,        "%s"\n' % (
+            self.table_name, field.field_name, ' ' * (20 - len(self.table_name) - len(field.field_name)), field.desc)
+            # print(res_str)
             s_fields_desc += res_str
 
         print(s_fields_desc)
@@ -551,7 +751,7 @@ class Table(object):
         s_putvalue_code = '    Put%sValuesToView(NormingView& m_v%s, %sValues&  m_%sValues)\n    {\n' % (
             self.table_name.upper(), self.table_name.upper(), self.table_name.upper(), self.table_name.upper())
 
-        for field in self.fields:                
+        for field in self.fields:
             s_code += field.get_define_code(self.table_name.upper())
             s_code += '\n'
             s_init_code += field.get_init_code(self.table_name.upper())
@@ -568,10 +768,9 @@ class Table(object):
 
         return s_code
 
-
     def get_table_sqlscript(self):
         '''
-        得到表结构的tbl内容，不包括字段描述
+        得到表结构的SQL语句，不包括字段描述
         '''
 
         if len(self.fields) == 0:
@@ -579,39 +778,43 @@ class Table(object):
 
         b_split_key = False
         s_keys = ''
-        s_fields_desc = ''
-        s_indexes = ''
-        
+
         s_script = '\n'
         if self.isnew:
             s_script += "IF EXISTS (SELECT * FROM dbo.sysobjects WHERE id = object_id(N'%s') AND objectproperty(id, N'IsUserTable') = 1)\n" % self.table_name.upper()
             s_script += "DROP TABLE %s;\n\n" % self.table_name.upper()
-            s_script += "CREATE TABLE %s(\n" % self.table_name.upper()
-
+            s_script += "CREATE TABLE %-40s-- %s\n" % (f"{self.table_name.upper()}(", self.table_desc)
 
         for field in self.fields:
             if not b_split_key and field.is_key == False:
                 b_split_key = True
-            
+
             if field.is_key:
-                if len(s_keys)>0:
+                if len(s_keys) > 0:
                     s_keys += ', '
                 s_keys += field.field_name.upper()
 
+            s_fmt_mask_list = ""
+            if len(field.mask_or_list) > 0:
+                s_blanks = "        "[0: 3 - len(field.desc) % 3]
+                s_fmt_mask_list = f"{s_blanks}-- {field.mask_or_list}".replace('\n', ', ').replace('ist,', 'ist:')
+
             if self.isnew:
-                s_script += field.get_sql_script()
-                s_script += ',\n'
+                s_script += f"{field.get_sql_script()}, -- {field.desc}{s_fmt_mask_list}\n"
             else:
-                s_script += 'alter table %-16s add %s;\n' % (self.table_name.upper(), field.get_sql_script())
-            
-            s_fields_desc += field.get_field_desc_script(self.table_name.upper())
+                s_script += 'alter table %-30s add %s;  -- %s%s\n' % (
+                self.table_name.upper(), field.get_sql_script(), field.desc, s_fmt_mask_list)
 
         if self.isnew:
             s_primary_key = '%-4sPRIMARY KEY (%s)\n' % (' ', s_keys)
             s_script += s_primary_key
             s_script += ");\n"
 
-        s_script += s_fields_desc
+        if len(self.indexes) > 0:
+            s_script += '\n'
+
+        for idx in self.indexes:
+            s_script += idx.get_sql_script(self.table_name.upper())
 
         return s_script
 
@@ -624,12 +827,52 @@ class Table(object):
             return ''
 
         s_upgrade_sql = ''
-        
+
         for field in self.fields:
             s_upgrade_sql += 'UPDATE %s %s;\n' % (self.table_name.upper(), field.get_upgrade_sql())
-            
+
         return s_upgrade_sql
 
+    def get_table_fields_desc_sqlscript(self):
+        '''
+        得到表结构字段描述的SQL语句
+        '''
+
+        if len(self.fields) == 0:
+            return ''
+
+        s_script = "\n"
+        for field in self.fields:
+            s_script += field.get_field_desc_script(self.table_name.upper())
+
+        return s_script
+
+    def get_table_dictionary_RMPlus(self):
+        '''
+        得到RM Plus表结构的数据字典, json格式
+        '''
+
+        if len(self.fields) == 0:
+            return ''
+
+        s_script = '''{
+"tableName":"%s",
+"description":"%s",
+"columns": [\n''' % (self.table_name.upper(), self.table_desc)
+
+        s_split1 = ''
+        for field in self.fields:
+            # 转换为JSON字符串
+            # json_str = json.dumps(field.__dict__)
+
+            # 转换为JSON对象
+            # json_obj = json.loads(json_str)
+            s_script = s_script + s_split1 + field.get_dictionary_script_RMPlus()
+            s_split1 = ',\n'
+
+        s_script += ']\n}'
+
+        return s_script
 
     def get_table_dictionary(self):
         '''
@@ -639,10 +882,10 @@ class Table(object):
         if len(self.fields) == 0:
             return ''
 
-        b_split_key = False 
+        b_split_key = False
         s_keys = ''
         i_index = 1
-        
+
         s_script = ''
         if self.isnew:
             s_script += '<?xml version="1.0" encoding="UTF-8"?>'
@@ -652,7 +895,7 @@ class Table(object):
         for field in self.fields:
             if not b_split_key and field.is_key == False:
                 b_split_key = True
-            
+
             if field.is_key:
                 s_keys += '''<column>
     <colname>%s</colname>
@@ -662,7 +905,6 @@ class Table(object):
 
             s_script += field.get_dictionary_script(i_index)
             i_index += 1
-           
 
         if self.isnew:
             s_primary_key = '''</columns><constraint><primarykey>
@@ -684,7 +926,7 @@ class Table(object):
         s_script = ''
         for field in self.fields:
             s_script += field.get_define_index_sql()
-                    
+
         return s_script
 
     def get_fileds_resources_RMPlus(self, s_language='en'):
@@ -695,25 +937,68 @@ class Table(object):
         '''
 
         s_fields_desc = ''
-        if s_language=='en' and self.table_desc > '':
+        if s_language == 'en' and self.table_desc > '':
             s_reource = 'table.%s=%s\n' % (self.table_name.rstrip().lower(), self.table_desc)
             s_fields_desc += s_reource
-        elif s_language=='cn' and self.table_desc2 > '':
+        elif s_language == 'cn' and self.table_desc2 > '':
             s_reource = 'table.%s=%s\n' % (self.table_name.rstrip().lower(), self.table_desc2)
             s_fields_desc += s_reource
 
-        for field in self.fields:            
+        for field in self.fields:
             s_fields_desc = s_fields_desc + field.get_field_reources_RMPlus(self.table_name, s_language) + "\n"
 
         # print(s_fields_desc)
         return s_fields_desc
+
+    def get_fileds_resources_SQL_RMPlus(self):
+        '''
+        得到表的资源化SQL语句, 类似于
+        INSERT INTO SYS_TRANS_NM(RESOURCE_ID, CREATE_BY, UPDATE_BY, RESOURCE_ENG, RESOURCE_CHN, RESOURCE_CHT, 
+        RESOURCE_FRA, RESOURCE_ESN, MODULE_CODE, CATEGORY, APP_TYPE)
+        VALUES ('%s', 'SYSTEM', 'SYSTEM', '%s', '%s', '%s', '%s', '%s', '%s', 'TABLE', 0);
+        '''
+
+        s_fields_sql = ''
+
+        s_fmt_table = f"table.{self.table_name.rstrip().lower()}"
+        s_fmt_desc_en = self.table_desc.replace("'", "''")
+        s_fmt_desc_cn = self.table_desc2.replace("'", "''")
+        s_module = self.table_name[0:3].upper()
+
+        s_one_sql = (
+                        "INSERT INTO SYS_TRANS_NM(RESOURCE_ID, CREATE_BY, UPDATE_BY, RESOURCE_ENG, RESOURCE_CHN, RESOURCE_CHT, "
+                        "RESOURCE_FRA, RESOURCE_ESN, MODULE_CODE, CATEGORY, APP_TYPE) "
+                        "VALUES ('%s', 'SYSTEM', 'SYSTEM', '%s', '%s', '%s', '%s', '%s', '%s', 'TABLE', 0);\n") % (
+                        s_fmt_table,
+                        s_fmt_desc_en, s_fmt_desc_cn, s_fmt_desc_en, s_fmt_desc_en, s_fmt_desc_en,
+                        s_module
+                    )
+
+        s_fields_sql += s_one_sql
+
+        for field in self.fields:
+            s_fmt_field = f"{s_fmt_table}.{field.field_name.rstrip().lower()}"
+            s_fmt_desc_en = field.desc.replace("'", "''")
+            s_fmt_desc_cn = field.desc2.replace("'", "''")
+            s_one_sql = (
+                            "INSERT INTO SYS_TRANS_NM(RESOURCE_ID, CREATE_BY, UPDATE_BY, RESOURCE_ENG, RESOURCE_CHN, RESOURCE_CHT, "
+                            "RESOURCE_FRA, RESOURCE_ESN, MODULE_CODE, CATEGORY, APP_TYPE) "
+                            "VALUES ('%s', 'SYSTEM', 'SYSTEM', '%s', '%s', '%s', '%s', '%s', '%s', 'TABLE', 0);\n") % (
+                            s_fmt_field,
+                            s_fmt_desc_en, s_fmt_desc_cn, s_fmt_desc_en, s_fmt_desc_en, s_fmt_desc_en,
+                            s_module
+                        )
+            s_fields_sql += s_one_sql
+
+        # print(s_fields_sql)
+        return s_fields_sql
 
     def get_table_class_name_java(self):
         '''
         生成表名对应的Jave类名，例如"sys_user"对应SysUserEntity
         '''
         s_name = sub('_([a-zA-Z])', lambda m: (m.group(1).upper()), self.table_name.lower())
-        s_name = s_name[0: 1].upper() + s_name[1: ]
+        s_name = s_name[0: 1].upper() + s_name[1:]
 
         return s_name
 
@@ -773,17 +1058,24 @@ public class %sEntity extends Entity implements Serializable {
 
         return s_def
 
+    def get_table_desc(self):
+        '''
+        得到表名及描述，不包括字段描述
+        '''
+
+        s_def = """-- %-29s%-48s%s""" % (self.table_name.upper(), self.table_desc, self.table_desc2)
+        return s_def
+
     def generate_tbl_file(self, s_file_path):
         '''
         生成tbl文件
         '''
         s_tbl = self.get_table_define()
         if len(s_tbl) == 0:
-            return 
-        
-        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
-            f_w.write(s_tbl)
+            return
 
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore') as f_w:
+            f_w.write(s_tbl)
 
     def generate_ptn_file(self, s_file_path):
         '''
@@ -791,22 +1083,21 @@ public class %sEntity extends Entity implements Serializable {
         '''
         s_ptn = self.get_table_patten()
         if len(s_ptn) == 0:
-            return 
-        
-        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            return
+
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore') as f_w:
             f_w.write(s_ptn)
-    
+
     def generate_class_code(self, s_file_path):
         '''
         生成c++ class代码文件
         '''
         s_code = self.get_table_class_code()
         if len(s_code) == 0:
-            return 
-        
-        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            return
+
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore') as f_w:
             f_w.write(s_code)
-    
 
     def generate_sql_file(self, s_file_path):
         '''
@@ -814,9 +1105,9 @@ public class %sEntity extends Entity implements Serializable {
         '''
         s_sql = self.get_table_sqlscript()
         if len(s_sql) == 0:
-            return 
-        
-        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            return
+
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore') as f_w:
             f_w.write(s_sql)
 
     def generate_class_file_java(self, s_file_path):
@@ -825,9 +1116,9 @@ public class %sEntity extends Entity implements Serializable {
         '''
         s_class = self.get_table_class_define_java()
         if len(s_class) == 0:
-            return 
-        
-        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            return
+
+        with open(s_file_path, 'w', encoding='UTF-8', errors='ignore') as f_w:
             f_w.write(s_class)
 
 
@@ -836,16 +1127,15 @@ class Security(object):
     定义权限的数据结构
     '''
 
-    def __init__(self, s_name, s_desc='', s_desc2='', s_sequence='', b_created = False):
+    def __init__(self, s_name, s_desc='', s_desc2='', s_sequence='', b_created=False):
         '''
         Constructor
         '''
         self.sec_name = s_name
         self.sec_sequence = s_sequence
         self.sec_desc = s_desc
-        self.sec_desc2 = s_desc2 #中文描述
+        self.sec_desc2 = s_desc2  # 中文描述
         self.b_created = b_created
-
 
     def get_initsql(self):
         '''
@@ -856,10 +1146,10 @@ class Security(object):
             return ''
 
         s_module = self.sec_name[:2]
-        s_sql = "INSERT INTO ASSEC(ASSEC_MODULEID,ASSEC_SECID,ASSEC_SEQUENCE,ASSEC_SECDESC) VALUES('%s','%s',%s,'%s');" % (s_module, self.sec_name, self.sec_sequence, self.sec_desc)
-            
-        return s_sql
+        s_sql = "INSERT INTO ASSEC(ASSEC_MODULEID,ASSEC_SECID,ASSEC_SEQUENCE,ASSEC_SECDESC) VALUES('%s','%s',%s,'%s');" % (
+        s_module, self.sec_name, self.sec_sequence, self.sec_desc)
 
+        return s_sql
 
     def get_initgroup_sql(self):
         '''
@@ -867,11 +1157,11 @@ class Security(object):
         INSERT INTO ASGRPSEC(ASGRPSEC_GRPID,ASGRPSEC_MODULEID,ASGRPSEC_SECID,ASGRPSEC_GRPDESC) VALUES('ADMIN','BK','BK074','Administrator');
         '''
 
-        s_groups = [ 
-            ['ADMIN', 'Administrator'], 
-            ['HRM', 'HR Manager'], 
-            ['FM', 'Financial Manager'], 
-            ['GM', 'General Manager'], 
+        s_groups = [
+            ['ADMIN', 'Administrator'],
+            ['HRM', 'HR Manager'],
+            ['FM', 'Financial Manager'],
+            ['GM', 'General Manager'],
             # ['SALES', 'Sales'] 
         ]
 
@@ -883,5 +1173,5 @@ class Security(object):
         s_sql = ''
         for grp in s_groups:
             s_sql += "%s('%s','%s','%s','%s');\n" % (s_insert, grp[0], s_module, self.sec_name, grp[1])
-            
+
         return s_sql
