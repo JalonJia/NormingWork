@@ -627,7 +627,7 @@ class Table(object):
     '''
 
     def __init__(self, s_table_name: str, s_table_desc='', s_key_desc='', b_created=False, s_table_desc2='',
-                 b_new=False):
+                 b_new=False, b_setup=False):
         '''
         Constructor
         '''
@@ -638,6 +638,7 @@ class Table(object):
         self.fields = []
         self.b_created = b_created
         self.isnew = b_new
+        self.issetup = b_setup
         self.indexes = []
 
     def add_field(self, field):
@@ -815,6 +816,9 @@ class Table(object):
 
         for idx in self.indexes:
             s_script += idx.get_sql_script(self.table_name.upper())
+
+        if self.table_name.upper() in ('EXP_REQD'):
+            s_script += s_script.replace(self.table_name.upper(), self.table_name.upper()+'P')
 
         return s_script
 
@@ -1064,6 +1068,9 @@ public class %sEntity extends Entity implements Serializable {
         '''
 
         s_def = """-- %-29s%-48s%s""" % (self.table_name.upper(), self.table_desc, self.table_desc2)
+        if self.table_name.upper() in ('EXP_REQD'):
+            s_def += """\n-- %-29s%-48s%s""" % (self.table_name.upper()+'P', self.table_desc, self.table_desc2)
+
         return s_def
 
     def generate_tbl_file(self, s_file_path):

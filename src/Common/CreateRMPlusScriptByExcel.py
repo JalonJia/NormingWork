@@ -188,6 +188,7 @@ class CreateRMPlusScriptByExcel(object):
                     table.indexes = []
                     table.b_created = b_created
                     table.isnew = b_new
+                    table.issetup = (str(sheet.row_values(row)[2]).upper() == 'SETUP') #C列标记是否是Setup表
                     continue
 
                 #B列为字段名
@@ -289,6 +290,119 @@ class CreateRMPlusScriptByExcel(object):
         return tables, dropdowns
 
 
+    def get_dropdown_scripts(self, file_path, dorpdowns):
+        '''
+        将Dropdown生成对应的脚本
+        '''
+
+        if len(dorpdowns) == 0:
+            return
+
+        s_date = time.strftime("%Y-%m-%d", time.localtime())
+        s_folder = os.path.join(file_path, 'tables')
+        if not os.path.exists(s_folder):
+            os.makedirs(s_folder, mode=0o777, exist_ok=True)
+        s_file = os.path.join(s_folder, 'table_dict.json')
+        s_next_line = '\n'
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write('{')
+            for dp in dorpdowns.values():
+                f_w.write(f'{s_next_line}    ')
+                f_w.write(dp.get_json_context())
+                s_next_line = ',\n'
+            f_w.write('\n}')
+
+        s_folder = os.path.join(file_path, 'i18n\\dict')
+        if not os.path.exists(s_folder):
+            os.makedirs(s_folder, mode=0o777, exist_ok=True)
+        s_file = os.path.join(s_folder, 'messages_en_US.properties')
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            for dp in dorpdowns.values():
+                f_w.write(dp.get_json_res_eng())
+
+        s_file = os.path.join(s_folder, 'messages_zh_CN.properties')
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            for dp in dorpdowns.values():
+                f_w.write(dp.get_json_res_eng())
+
+        # s_file = os.path.join(file_path, 'changed_dict_resouces_%s.sql' % s_date)
+        s_file = os.path.join(file_path, 'changed_tables_resouces_%s.sql' % s_date)
+        with open(s_file, 'a', encoding='UTF-8', errors='ignore') as f_w:
+            # f_w.write("delete from SYS_TRANS_NM WHERE CATEGORY='Dict';")
+            f_w.write("\n\n")
+            for dp in dorpdowns.values():
+                f_w.write(dp.get_resources_SQL_RMPlus())
+                f_w.write('\n')
+
+
+    def get_table_relations(self, file_path, tables):
+        '''
+        比较所有的数据表结构和Setup表，得到字段之间的关联关系，生成SQL脚本
+        '''
+
+        s_date = time.strftime("%Y-%m-%d", time.localtime())
+        # 初始化关联关系表
+        possible_relations = []
+        for table1 in tables:
+            for table2 in tables:
+                if not table2.issetup or table1 == table2:
+                    continue
+
+                # 寻找相同的字段名或相似的字段名
+                ignore_fields = {'create_by', 'create_time', 'update_time', 'update_by', 'date_inactive', 'status',
+                                 'comments', 'notes', 'pmflag', 'wf_ver', 'pmbg_over', 'home_cur', 'fisc_year',
+                                 'rate_date', 'attaches', 'doc_ref', 'fisc_period', 'substitute_by', 'submit_date',
+                                 'in_endorse', 'trans_type', 'order_num', 'bpmn_id', 'pid'}
+                fields_set1 = set(d.field_name for d in table1.fields
+                                  if (not d.is_key) and ('id' in d.field_name or 'code' in d.field_name)) - ignore_fields
+                fields_set2 = set(d.field_name for d in table2.fields if d.is_key) - ignore_fields
+                common_fields = []
+                for key_uuid in fields_set2:
+                    for relation_field in fields_set1:
+                        if (key_uuid == relation_field) \
+                            or (f'_{key_uuid}' in relation_field) \
+                            or (f'{key_uuid}_' in relation_field):
+                            common_fields.append([relation_field, key_uuid])
+                # common_fields = fields_set1.intersection(fields_set2)
+
+                if common_fields:
+                    code_fields = list(d.field_name for d in table2.fields if 'CODE' in d.field_name.upper())
+                    code_field = '' if len(code_fields) == 0 else code_fields[0]
+                    desc_fields = list(d.field_name for d in table2.fields
+                                       if 'DESC' in d.field_name.upper() or 'NAME' in d.field_name.upper())
+                    desc_field = '' if len(desc_fields) == 0 else desc_fields[0]
+                    possible_relations.extend(
+                        [(f"{table1.table_name}", f"{field[0]}", f"{table2.table_name}", f"{field[1]}",
+                          f"{code_field}", f"{desc_field}")
+                         for field in common_fields])
+                        # [(f"{table1.table_name}.{field}", f"{table2.table_name}.{field}") for field in common_fields])
+
+        #添加一些特殊的关联关系，字段名不一样的
+        # possible_relations.extend(["HRE_EMP", "CA_WF_UUID", "CMS_WF_CATE", "WF_UUID", "WF_CODE", "WF_DESC", ""])
+        # possible_relations.extend(["HRE_EMP", "EXP_WF_UUID", "CMS_WF_CATE", "WF_UUID", "WF_CODE", "WF_DESC", ""])
+        # possible_relations.extend(["HRE_EMP", "TRV_WF_UUID", "CMS_WF_CATE", "WF_UUID", "WF_CODE", "WF_DESC", ""])
+        # possible_relations.extend(["HRE_EMP", "EXP_ACCST_UUID", "EXP_ACCST", "ACCST_UUID", "ACCST_CODE", "ACCST_DESC", ""])
+        # possible_relations.extend(["HRE_TMP", "CA_WF_UUID", "CMS_WF_CATE", "WF_UUID", "WF_CODE", "WF_DESC", ""])
+        # possible_relations.extend(["HRE_TMP", "EXP_WF_UUID", "CMS_WF_CATE", "WF_UUID", "WF_CODE", "WF_DESC", ""])
+        # possible_relations.extend(["HRE_TMP", "TRV_WF_UUID", "CMS_WF_CATE", "WF_UUID", "WF_CODE", "WF_DESC", ""])
+        # possible_relations.extend(["HRE_TMP", "EXP_ACCST_UUID", "EXP_ACCST", "ACCST_UUID", "ACCST_CODE", "ACCST_DESC", ""])
+
+
+        s_file = os.path.join(file_path, 'relation_fields_%s.sql' % s_date)
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore') as f_w:
+            for relation in possible_relations:
+                s_sql = """\
+INSERT INTO SYS_TABLE_RELATION(TR_UUID, CREATE_BY, UPDATE_BY, BASE_TABLE, BASE_FIELD, \
+LINKTO_TABLE, LINKTO_FIELD, LINK_TYPE, LINKTO_CODE, LINKTO_DESC, LINKTO_ADD_FIELDS, LINKTO_FINDER_FIELDS, \
+ADD_FILTER, USED_BY, IS_SYSTEM, STATUS, DATE_INACTIVE, COMMENTS) \
+VALUES (NEWID(), N'SYSTEM', N'SYSTEM', N'%s', N'%s', N'%s', N'%s', \
+0, N'%s', N'%s', N'', N'', N'', 0, 1, 1, '1900-01-01 00:00:00.000', N'');
+""" % (relation[0].upper(), relation[1].upper(), relation[2].upper(),
+       relation[3].upper(), relation[4].upper(), relation[5].upper())
+                f_w.write(s_sql)
+                # f_w.write('\n')
+
+
     def generate_table_changes(self, file_path):
         '''
         用途: 得到数据表的结构变化，并生成sql文件以及资源文件
@@ -305,14 +419,19 @@ class CreateRMPlusScriptByExcel(object):
         if not os.path.exists(file_path):
             os.makedirs(file_path, mode=0o777, exist_ok=True)
         
-        s_file = os.path.join(file_path, 'changed_tables_list_%s.sql' % s_date)
+        # s_file = os.path.join(file_path, 'changed_tables_list_%s.sql' % s_date)
+        # with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+        #     for table in tables:
+        #         f_w.write(table.get_table_desc())
+        #         f_w.write('\n')
+
+        s_file = os.path.join(file_path, 'changed_tables_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
             for table in tables:
                 f_w.write(table.get_table_desc())
                 f_w.write('\n')
 
-        s_file = os.path.join(file_path, 'changed_tables_%s.sql' % s_date)
-        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write('\n')
             for table in tables:
                 f_w.write(table.get_table_sqlscript())
                 f_w.write('\n')
@@ -394,43 +513,11 @@ class CreateRMPlusScriptByExcel(object):
                 f_w.write(table.get_table_dictionary_RMPlus())
 
         dorpdowns = self.get_changed_tables()[1]
-        if len(dorpdowns) == 0:
-            return
+        self.get_dropdown_scripts(file_path, dorpdowns)
 
-        s_folder = os.path.join(file_path, 'tables')
-        if not os.path.exists(s_folder):
-            os.makedirs(s_folder, mode=0o777, exist_ok=True)
-        s_file = os.path.join(s_folder, 'table_dict.json')
-        s_next_line = '\n'
-        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
-            f_w.write('{')
-            for dp in dorpdowns.values():
-                f_w.write(f'{s_next_line}    ')
-                f_w.write(dp.get_json_context())
-                s_next_line = ',\n'
-            f_w.write('\n}')
+        self.get_table_relations(file_path, tables)
 
-        s_folder = os.path.join(file_path, 'i18n\\dict')
-        if not os.path.exists(s_folder):
-            os.makedirs(s_folder, mode=0o777, exist_ok=True)
-        s_file = os.path.join(s_folder, 'messages_en_US.properties')
-        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
-            for dp in dorpdowns.values():
-                f_w.write(dp.get_json_res_eng())
 
-        s_file = os.path.join(s_folder, 'messages_zh_CN.properties')
-        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
-            for dp in dorpdowns.values():
-                f_w.write(dp.get_json_res_eng())
-
-        s_file = os.path.join(file_path, 'changed_dict_resouces_%s.sql' % s_date)
-        with open(s_file, 'w', encoding='UTF-8', errors='ignore') as f_w:
-            f_w.write("delete from SYS_TRANS_NM WHERE CATEGORY='Dict';\n\n")
-            for dp in dorpdowns.values():
-                f_w.write(dp.get_resources_SQL_RMPlus())
-                f_w.write('\n')
-
-            
     def get_changed_security(self):
         '''
         TODO: 读取Excel，得到新增的权限列表
