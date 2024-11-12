@@ -70,7 +70,10 @@ class DropdownList(object):
         key_values = s_define.splitlines()
         for element in key_values:
             if '-' in element:
-                self.list_values[element.split('-')[0].strip()] = element.split('-')[1].strip()
+                if element[0] == '-': #下拉列表值为负数，需要从右向左拆
+                    self.list_values[element.rsplit('-', 1)[0].strip()] = element.rsplit('-', 1)[1].strip()
+                else:
+                    self.list_values[element.split('-', 1)[0].strip()] = element.split('-', 1)[1].strip()
 
         #特殊情况
         if self.list_name == 'yes_no':
@@ -1070,6 +1073,17 @@ public class %sEntity extends Entity implements Serializable {
         s_def = """-- %-29s%-48s%s""" % (self.table_name.upper(), self.table_desc, self.table_desc2)
         if self.table_name.upper() in ('EXP_REQD'):
             s_def += """\n-- %-29s%-48s%s""" % (self.table_name.upper()+'P', self.table_desc, self.table_desc2)
+
+        return s_def
+
+    def generate_table_clear_sql(self):
+        '''
+        得到DELETE FROM TABLE_NAME; 的脚本
+        '''
+
+        s_def = """DELETE FROM %-29s; -- %-48s%s""" % (self.table_name.upper(), self.table_desc, self.table_desc2)
+        if self.table_name.upper() in ('EXP_REQD'):
+            s_def += """\nDELETE FROM %-29s; -- %-48s%s""" % (self.table_name.upper() + 'P', self.table_desc, self.table_desc2)
 
         return s_def
 

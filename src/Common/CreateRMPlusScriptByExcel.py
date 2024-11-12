@@ -427,6 +427,7 @@ VALUES (NEWID(), N'SYSTEM', N'SYSTEM', N'%s', N'%s', N'%s', N'%s', \
 
         s_file = os.path.join(file_path, 'changed_tables_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(f'-- {s_date}\n')
             for table in tables:
                 f_w.write(table.get_table_desc())
                 f_w.write('\n')
@@ -438,6 +439,7 @@ VALUES (NEWID(), N'SYSTEM', N'SYSTEM', N'%s', N'%s', N'%s', N'%s', \
 
         s_file = os.path.join(file_path, 'upgrade_tables_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(f'-- {s_date}\n')
             for table in tables:
                 s_sql = table.get_table_upgradesql()
                 if len(s_sql)>0:
@@ -446,6 +448,7 @@ VALUES (NEWID(), N'SYSTEM', N'SYSTEM', N'%s', N'%s', N'%s', N'%s', \
 
         s_file = os.path.join(file_path, 'changed_tables_desc_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(f'-- {s_date}\n')
             f_w.write('--sp_addextendedproperty sp_updateextendedproperty\n\n')
             for table in tables:
                 f_w.write(table.get_table_fields_desc_sqlscript())
@@ -453,11 +456,18 @@ VALUES (NEWID(), N'SYSTEM', N'SYSTEM', N'%s', N'%s', N'%s', N'%s', \
 
         s_file = os.path.join(file_path, 'changed_tables_resouces_%s.sql' % s_date)
         with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(f'-- {s_date}\n')
             f_w.write('delete from SYS_TRANS_NM;\n\n')
             for table in tables:
                 f_w.write(table.get_fileds_resources_SQL_RMPlus())
                 f_w.write('\n')
 
+        s_file = os.path.join(file_path, 'clear_tables_%s.sql' % s_date)
+        with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:
+            f_w.write(f'-- {s_date}\n')
+            for table in tables:
+                f_w.write(table.generate_table_clear_sql())
+                f_w.write('\n')
 
         # s_file = os.path.join(file_path, 'messages_en_US_%s.properties' % s_date)
         # with open(s_file, 'w', encoding='UTF-8', errors='ignore' ) as f_w:

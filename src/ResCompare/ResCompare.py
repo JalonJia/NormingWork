@@ -215,15 +215,15 @@ class ResourceCompare:
                     row_num += 1
 
         excel_file.save(self.result_excel_file)            
-                    
+
 
 
 
 
 #Testing
 if __name__ == '__main__' :
-    s_oldversion = 'EN70A'
-    s_newversion = 'EN71A'
+    s_oldversion = 'EN71A'
+    s_newversion = 'EN71A-PU2'
     s_runner_home = r'D:\Dev\ResourceHacker'
     res_folder_1 = r'C:\Sage300\%s\ENG' % (s_oldversion)
     res_folder_2 = r'C:\Sage300\%s\ENG' % (s_newversion)
